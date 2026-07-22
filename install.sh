@@ -14,34 +14,39 @@ echo "  Nous 量化投研系统 — 一键安装"
 echo "========================================="
 echo ""
 
-# ── 1. Clone ──────────────────────────────────────────────────────────
+# --- 1. Clone ----------------------------------------------------------
+# bash reads scripts by file offset; re-exec after pull so a rewritten
+# install.sh cannot turn later comment bytes (e.g. "─") into commands.
 if [ -d "$INSTALL_DIR" ]; then
-    echo "[1/7] 仓库已存在, 更新..."
-    cd "$INSTALL_DIR" && git pull
+    if [ "${NOUS_INSTALL_SKIP_PULL:-0}" != "1" ]; then
+        echo "[1/7] 仓库已存在, 更新..."
+        cd "$INSTALL_DIR" && git pull
+        exec env NOUS_INSTALL_SKIP_PULL=1 bash "$INSTALL_DIR/install.sh" "$@"
+    fi
 else
     echo "[1/7] 克隆仓库..."
     mkdir -p "$(dirname "$INSTALL_DIR")"
     git clone "$REPO" "$INSTALL_DIR"
 fi
 
-# ── 2. Python venv ─────────────────────────────────────────────────────
+# --- 2. Python venv ----------------------------------------------------
 echo "[2/7] 创建虚拟环境..."
 cd "$INSTALL_DIR"
 python3 -m venv "$VENV" 2>/dev/null || python3 -m venv "$VENV" --without-pip
 
-# ── 3. Install ─────────────────────────────────────────────────────────
+# --- 3. Install --------------------------------------------------------
 # V2: ml(LightGBM+pyarrow) trading(PyPortfolioOpt/HRP) backtest
 # 注: Python 3.14 下 pandas-ta/numba 不可用，已从 backtest extras 移除
 echo "[3/7] 安装依赖 (dev/api/scheduler/ml/trading/backtest)..."
 "$VENV/bin/pip" install --upgrade pip -q
 "$VENV/bin/pip" install -e ".[dev,api,scheduler,ml,trading,backtest]" -q
 
-# ── 4. Config ──────────────────────────────────────────────────────────
+# --- 4. Config ---------------------------------------------------------
 echo "[4/7] 配置..."
 [ -f "$INSTALL_DIR/.env" ] || cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
 echo "  → 请编辑 $INSTALL_DIR/.env 填入 DEEPSEEK_API_KEY"
 
-# ── 5. Data dir ────────────────────────────────────────────────────────
+# --- 5. Data dir -------------------------------------------------------
 echo "[5/7] 数据目录..."
 mkdir -p "$DATA_DIR"/{logs,factors,models,ic_analysis}
 for db in "$HOME/code/stock-screener/data/screener.db" "$INSTALL_DIR/data/screener.db"; do
@@ -53,7 +58,7 @@ for db in "$HOME/code/stock-screener/data/screener.db" "$INSTALL_DIR/data/screen
 done
 echo "  → 数据根目录: $DATA_DIR"
 
-# ── 6. 全局命令（无需 activate）────────────────────────────────────────
+# --- 6. 全局命令（无需 activate）---------------------------------------
 echo "[6/7] 注册全局命令 nous..."
 mkdir -p "$BIN_DIR"
 ln -sfn "$NOUS_BIN" "$BIN_DIR/nous"
@@ -82,7 +87,7 @@ fi
 
 export PATH="$BIN_DIR:$PATH"
 
-# ── 7. Verify ──────────────────────────────────────────────────────────
+# --- 7. Verify ---------------------------------------------------------
 echo "[7/7] 验证安装..."
 "$NOUS_BIN" version
 "$NOUS_BIN" data status 2>/dev/null || echo "  (数据库未配置, 跳过 data status)"

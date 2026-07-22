@@ -4,22 +4,25 @@
 
 ## 快速开始（一键安装，无需 activate）
 
-本仓库为 **private**，`raw.githubusercontent.com` 的公开 `curl | bash` 会 404。请先用 GitHub CLI 或 SSH 克隆，再本地安装：
+前提：已安装并登录 [GitHub CLI](https://cli.github.com/)（`gh auth login`）。  
+仓库是 private，且国内常连不上 `raw.githubusercontent.com`，所以**不要**用 `curl .../raw.githubusercontent.com/... | bash`。
+
+一键安装（经 `api.github.com` 鉴权拉脚本，等价于 curl|bash）：
 
 ```bash
-# 推荐：GitHub CLI（已登录 gh 即可）
-gh repo clone sophiezel/nous ~/code/nous
-cd ~/code/nous && bash install.sh
-
-# 或：SSH（需已配置 git@github.com 密钥）
-git clone git@github.com:sophiezel/nous.git ~/code/nous
-cd ~/code/nous && bash install.sh
+bash <(gh api -H "Accept: application/vnd.github.v3.raw" "/repos/sophiezel/nous/contents/install.sh?ref=main")
 ```
 
-若仓库已在本地，直接：
+备选（先克隆再装）：
 
 ```bash
-bash install.sh
+gh repo clone sophiezel/nous ~/code/nous && cd ~/code/nous && bash install.sh
+```
+
+若仓库已在本地：
+
+```bash
+cd ~/code/nous && bash install.sh
 ```
 
 安装脚本会：创建 `.venv`、装齐依赖、把 `nous` 链到 `~/bin` 并写入 PATH。  
