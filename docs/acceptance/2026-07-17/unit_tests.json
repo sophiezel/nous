@@ -1,0 +1,20 @@
+{
+  "cmd": [
+    "~/code/nous/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/engine/backtest/test_position_and_mtm.py",
+    "tests/engine/backtest/test_walk_forward_folds.py",
+    "tests/engine/ml/test_cs_norm_ic.py",
+    "-q",
+    "--tb=line"
+  ],
+  "returncode": 0,
+  "stdout": "============================= test session starts ==============================\ncollected 13 items\n\ntests/engine/backtest/test_position_and_mtm.py .......                   [ 53%]\ntests/engine/backtest/test_walk_forward_folds.py .                       [ 61%]\ntests/engine/ml/test_cs_norm_ic.py .....                                 [100%]\n\n=============================== warnings summary ===============================\ntests/engine/backtest/test_position_and_mtm.py::test_missing_price_does_not_zero_equity\n  ~/code/nous/.venv/lib/python3.14/site-packages/numpy/_core/_methods.py:219: RuntimeWarning: Degrees of freedom <= 0 for slice\n    ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,\n\ntests/engine/backtest/test_position_and_mtm.py::test_missing_price_does_not_zero_equity\n  ~/code/nous/.venv/lib/python3.14/site-packages/numpy/_core/_methods.py:211: RuntimeWarning: invalid value encountered in scalar divide\n    ret = ret.dtype.type(ret / rcount)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 13 passed, 2 warnings in 1.09s ========================\n",
+  "stderr": "",
+  "elapsed_s": 1.5,
+  "ok": true,
+  "passed": 13,
+  "failed": 0,
+  "gate": true
+}

@@ -1,0 +1,111 @@
+{
+  "strategy": "龙脉TRL",
+  "label": "龙脉TRL (WF 5折)",
+  "mode": "walk_forward",
+  "total_return": 0.5104,
+  "annual_return": 0.8297,
+  "max_drawdown": 0.1198,
+  "sharpe_ratio": 2.5159,
+  "sharpe_winsorized": 2.5191,
+  "sortino_ratio": 4.158,
+  "min_daily_return": -0.037974,
+  "max_daily_return": 0.067391,
+  "n_return_spikes": 0,
+  "integrity_flags": {
+    "TRUSTED": true,
+    "reasons": [],
+    "sharpe_vs_winsorized_gap": 0.0013
+  },
+  "total_trades": 551,
+  "n_trading_days": 172,
+  "win_rate": 0.2142,
+  "profit_factor": 1.9367,
+  "equity_start": 1000000.0,
+  "equity_end": 1510356.11,
+  "equity_min": 968908.12,
+  "equity_max": 1684163.3,
+  "fold_details": [
+    {
+      "fold": 1,
+      "start": "2025-12-01",
+      "end": "2026-01-12",
+      "train_end": "2025-11-28",
+      "model_trained": true,
+      "n_trades": 114,
+      "return": 0.1484,
+      "sharpe": 6.6296
+    },
+    {
+      "fold": 2,
+      "start": "2026-01-13",
+      "end": "2026-02-27",
+      "train_end": "2026-01-12",
+      "model_trained": true,
+      "n_trades": 98,
+      "return": 0.097,
+      "sharpe": 2.3814
+    },
+    {
+      "fold": 3,
+      "start": "2026-03-02",
+      "end": "2026-04-13",
+      "train_end": "2026-02-27",
+      "model_trained": true,
+      "n_trades": 110,
+      "return": 0.0667,
+      "sharpe": 1.8721
+    },
+    {
+      "fold": 4,
+      "start": "2026-04-14",
+      "end": "2026-05-26",
+      "train_end": "2026-04-13",
+      "model_trained": true,
+      "n_trades": 124,
+      "return": 0.1453,
+      "sharpe": 6.5934
+    },
+    {
+      "fold": 5,
+      "start": "2026-05-27",
+      "end": "2026-07-10",
+      "train_end": "2026-05-26",
+      "model_trained": true,
+      "n_trades": 105,
+      "return": -0.0186,
+      "sharpe": -0.3308
+    }
+  ],
+  "fold_windows": [
+    [
+      "2025-12-01",
+      "2026-01-12"
+    ],
+    [
+      "2026-01-13",
+      "2026-02-27"
+    ],
+    [
+      "2026-03-02",
+      "2026-04-13"
+    ],
+    [
+      "2026-04-14",
+      "2026-05-26"
+    ],
+    [
+      "2026-05-27",
+      "2026-07-10"
+    ]
+  ],
+  "gates": {
+    "TRUSTED": true,
+    "no_daily_spike_gt_15pct": true,
+    "n_spikes_eq_0": true,
+    "wf_fold_windows_unique_pre": true,
+    "wf_fold_non_overlapping_pre": true,
+    "wf_fold_windows_unique_runtime": true,
+    "n_folds_ge_2": true
+  },
+  "ok": true
+}

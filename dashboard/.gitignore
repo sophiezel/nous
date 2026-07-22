@@ -1,0 +1,16 @@
+node_modules/
+.next/
+data/reports.db
+.env*
+!.env.example
+.env*.local
+*.pyc
+__pycache__/
+.DS_Store
+.vercel/
+tsconfig.tsbuildinfo
+
+# SQLite runtime
+*.db-shm
+*.db-wal
+data/screener.db

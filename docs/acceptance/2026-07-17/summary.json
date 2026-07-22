@@ -1,0 +1,26 @@
+{
+  "综合裁决": "通过",
+  "overall": "PASS",
+  "引擎回归": "通过",
+  "荐股约束": "通过",
+  "unit_gate": true,
+  "pool_ok": true,
+  "strategies": {
+    "海鹰F3": {
+      "ok": true,
+      "TRUSTED": true,
+      "credibility": "可信",
+      "total_return": 0.1619,
+      "n_return_spikes": 0
+    },
+    "龙脉TRL": {
+      "ok": true,
+      "TRUSTED": true,
+      "credibility": "可信",
+      "total_return": 0.5104,
+      "n_return_spikes": 0
+    }
+  },
+  "报告路径": "docs/acceptance/2026-07-17/ACCEPTANCE_REPORT.md",
+  "report": "docs/acceptance/2026-07-17/ACCEPTANCE_REPORT.md"
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nous.scheduler</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>~/code/nous/.venv/bin/python3</string>
+        <string>-m</string>
+        <string>nous.scheduler</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>~/code/nous</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>~/nous-data/logs/scheduler.log</string>
+    <key>StandardErrorPath</key>
+    <string>~/nous-data/logs/scheduler-error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NOUS_ENV</key>
+        <string>production</string>
+        <key>NOUS_CONFIG_DIR</key>
+        <string>~/code/nous/config</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

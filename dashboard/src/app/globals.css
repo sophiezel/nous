@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   暗色主题 (默认 + .dark class)
+   Tailwind darkMode: "class" 模式
+   ============================================ */
+:root,
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+  --accent: #10b981;
+  --accent-foreground: #022c22;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+}
+
+/* ============================================
+   浅色主题 (!dark — 无 .dark class 时生效)
+   ============================================ */
+html:not(.dark) {
+  --background: #F8F9FA;
+  --foreground: #1A1D23;
+  --muted: #F3F2EF;
+  --muted-foreground: #4A5060;
+  --border: #E2E5EA;
+  --accent: #0066FF;
+  --accent-foreground: #E8F0FE;
+  --card: #FFFFFF;
+  --card-foreground: #1A1D23;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+html:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #D0D5DD;
+  border-radius: 3px;
+}
+
+/* Tabular numbers for data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Markdown content in reports — dark mode */
+.prose-invert {
+  --tw-prose-body: #d4d4d8;
+  --tw-prose-headings: #fafafa;
+  --tw-prose-links: #34d399;
+  --tw-prose-bold: #fafafa;
+  --tw-prose-code: #34d399;
+  --tw-prose-pre-bg: #18181b;
+  --tw-prose-pre-code: #d4d4d8;
+}
+
+/* Markdown content — light mode */
+html:not(.dark) .prose-invert {
+  --tw-prose-body: #4A5060;
+  --tw-prose-headings: #1A1D23;
+  --tw-prose-links: #0066FF;
+  --tw-prose-bold: #1A1D23;
+  --tw-prose-code: #0066FF;
+  --tw-prose-pre-bg: #F3F2EF;
+  --tw-prose-pre-code: #1A1D23;
+}
+
+/* Login page shake animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}

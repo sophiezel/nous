@@ -1,0 +1,156 @@
+# 用户持仓状态（脱敏：仅存盈亏百分比，无成本价和股数）
+# 更新: 2026-05-14 | 自动刷新
+
+accounts:
+  同花顺:
+    holdings:
+      - symbol: HK3690
+        name: 美团
+        market: hk
+        sector: 互联网/消费
+        pnl_pct: -24.70
+        weight_pct: 40.8
+        hold_days: 365
+        tier: core  # 核心持仓
+
+      - symbol: HK0968
+        name: 信义光能
+        market: hk
+        sector: 光伏/新能源
+        pnl_pct: -10.63
+        weight_pct: 3.8
+        hold_days: 730
+        tier: satellite
+
+      - symbol: HK0285
+        name: 比亚迪电子
+        market: hk
+        sector: 消费电子/汽车电子
+        pnl_pct: -21.94
+        weight_pct: 6.5
+        hold_days: null
+        tier: satellite
+
+      - symbol: HK2367
+        name: 巨子生物
+        market: hk
+        sector: 医美/化妆品
+        pnl_pct: -32.82
+        weight_pct: 8.8
+        hold_days: null
+        tier: satellite
+
+      - symbol: HK2015
+        name: 理想汽车
+        market: hk
+        sector: 新能源车
+        pnl_pct: -15.55
+        weight_pct: 5.5
+        hold_days: null
+        tier: satellite
+
+      - symbol: "000550"
+        name: 江铃汽车
+        market: a
+        sector: 汽车/华为智选
+        pnl_pct: -12.65
+        weight_pct: 15.9
+        hold_days: null
+        tier: satellite
+
+      - symbol: "000999"
+        name: 华润三九
+        market: a
+        sector: 中药/医药
+        pnl_pct: -25.37
+        weight_pct: 6.6
+        hold_days: null
+        tier: satellite
+
+      - symbol: "512690"
+        name: 酒ETF(鹏华)
+        market: a
+        sector: 白酒/消费
+        pnl_pct: -19.11
+        weight_pct: 7.3
+        hold_days: null
+        tier: etf
+
+  招商证券:
+    holdings:
+      - symbol: HK0968
+        name: 信义光能
+        market: hk
+        sector: 光伏/新能源
+        pnl_pct: -31.26
+        weight_pct: 20.0
+        hold_days: 730
+        tier: core  # 重仓
+
+      - symbol: HK03033
+        name: 南方恒生科技ETF
+        market: hk
+        sector: 恒生科技/指数
+        pnl_pct: 4.96
+        weight_pct: 11.95
+        hold_days: null
+        tier: etf
+
+funds:
+  holdings:
+    - symbol: "005827"
+      name: 易方达蓝筹精选混合
+      pnl_pct: -22.92
+      weight_pct: 13.28
+      style: 蓝筹/混合
+
+    - symbol: "519069"
+      name: 汇添富价值精选混合A
+      pnl_pct: -7.85
+      weight_pct: 28.66
+      style: 价值精选
+
+    - symbol: "206009"
+      name: 鹏华新兴产业混合A
+      pnl_pct: 11.97
+      weight_pct: 16.25
+      style: 新兴产业
+
+    - symbol: "180012"
+      name: 银华富裕主题混合A
+      pnl_pct: -38.73
+      weight_pct: 7.87
+      style: 消费主题
+
+    - symbol: "012414"
+      name: 招商中证白酒指数C
+      pnl_pct: -31.68
+      weight_pct: 12.49
+      style: 白酒指数
+
+    - symbol: "161725"
+      name: 招商中证白酒指数A
+      pnl_pct: -31.00
+      weight_pct: 12.17
+      style: 白酒指数
+
+    - symbol: "519688"
+      name: 交银施罗德精选混合
+      pnl_pct: 20.31
+      weight_pct: 9.29
+      style: 精选混合
+
+# 汇总统计
+summary:
+  total_positions: 17
+  profitable: 3       # 南方恒生科技(+4.96%) / 鹏华新兴产业(+11.97%) / 交银施罗德(+20.31%)
+  loss_making: 14
+  max_loss: 银华富裕(-38.73%)
+  max_concentration: 美团(40.8%) # 同花顺账户内
+  cross_account_concentration: 信义光能(同花顺3.8%+招商20.0%=合计约24%占总仓位)
+
+  # 风险指标
+  hk_exposure_pct: ~70     # 港股占总持仓约70%
+  consumption_exposure: ~40  # 消费相关(美团+白酒基金×2+银华+巨子生物)
+  new_energy_exposure: ~15   # 新能源(信义光能+比亚迪电子+理想)
+  single_stock_risk: 美团40.8%  # 单票集中度极高

@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+*.local
+
+# Data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+nous-data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+node_modules/
+
+# Dashboard
+dashboard/node_modules/
+dashboard/.next/
+dashboard/.vercel/
+dashboard/.hermes/

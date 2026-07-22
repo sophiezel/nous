@@ -1,0 +1,67 @@
+{
+  "checks": [
+    {
+      "name": "pool_rank0_is_9",
+      "ok": true,
+      "value": 9.0
+    },
+    {
+      "name": "pool_rank10_is_8_5",
+      "ok": true,
+      "value": 8.5
+    },
+    {
+      "name": "pool_deep_rank_floor_7",
+      "ok": true,
+      "value": 7.0
+    },
+    {
+      "name": "merged_score_passthrough",
+      "ok": true,
+      "value": 8.55
+    },
+    {
+      "name": "max_single_sticky",
+      "ok": true,
+      "value": 0.12
+    },
+    {
+      "name": "hard_ceiling_30",
+      "ok": true,
+      "value": 0.3
+    },
+    {
+      "name": "f3_hrp_drop3",
+      "ok": true,
+      "value": {
+        "method": "hrp",
+        "drop_n": 3
+      }
+    },
+    {
+      "name": "trl_equal_weight",
+      "ok": true,
+      "value": {
+        "method": "equal_weight",
+        "max_positions": 25
+      }
+    },
+    {
+      "name": "a_universe_excludes_bj",
+      "ok": true,
+      "value": {
+        "n": 5196,
+        "bj_sample": []
+      }
+    },
+    {
+      "name": "validators_morning",
+      "ok": true,
+      "value": {
+        "ok": true,
+        "date": "2026-07-16"
+      }
+    }
+  ],
+  "ok": true
+}

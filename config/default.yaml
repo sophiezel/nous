@@ -1,0 +1,59 @@
+# Nous 默认配置
+# 环境特定覆盖: config/production.yaml
+# 密钥: .env 文件
+
+nous:
+  data_dir: "~/nous-data"
+  log_dir: "~/nous-data/logs"
+  env: "development"
+  debug: false
+
+database:
+  screener:
+    path: "screener.db"       # 相对 data_dir
+    busy_timeout: 30000
+    wal: true
+    cache_size: -64000        # 64MB
+    mmap_size: 268435456      # 256MB
+  reports:
+    path: "reports.db"
+    busy_timeout: 10000
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 2
+  cors_origins:
+    - "http://localhost:3000"
+    - "https://tiangong.uno"
+
+llm:
+  provider: "deepseek"
+  model: "deepseek-v4-pro"
+  api_key_env: "DEEPSEEK_API_KEY"
+  temperature: 0.1
+  max_tokens: 4096
+  timeout: 30
+
+scheduler:
+  timezone: "Asia/Shanghai"
+  max_workers: 4
+  misfire_grace_time: 300    # 5分钟容错
+
+trading:
+  sim_mode: true              # 模拟交易模式
+  max_position_pct: 0.30      # 单票最大仓位 30%
+  max_sector_pct: 0.50        # 单板块最大 50%
+  stop_loss_pct: 0.08         # 硬止损 8%
+  atr_multiplier: 2.0         # ATR 止损倍数
+
+dashboard:
+  ecs_host: "YOUR_SERVER"
+  ecs_user: "root"
+  deploy_path: "/opt/nous"
+
+logging:
+  level: "INFO"
+  format: "json"              # json | console
+  rotation: "1 day"
+  retention: "30 days"
