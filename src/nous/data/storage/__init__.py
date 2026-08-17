@@ -13,6 +13,7 @@ from __future__ import annotations
 import functools
 import sqlite3
 import time
+from pathlib import Path
 from typing import Callable
 
 # Re-export core functions with compatibility wrappers
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS stock_fundamental (
     dividend_yield  REAL,
     debt_ratio      REAL,
     total_mv        REAL,
+    pe_dynamic      REAL,
     snapshot_date   DATE,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (symbol) REFERENCES stock_basic(symbol)
@@ -77,10 +79,23 @@ CREATE TABLE IF NOT EXISTS lhb_daily (
     PRIMARY KEY (trade_date, symbol)
 );
 
+CREATE TABLE IF NOT EXISTS index_daily (
+    symbol     TEXT NOT NULL,
+    trade_date DATE NOT NULL,
+    open       REAL,
+    high       REAL,
+    low        REAL,
+    close      REAL,
+    volume     REAL,
+    amount     REAL,
+    PRIMARY KEY (symbol, trade_date)
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_daily_unique ON stock_daily(symbol, trade_date);
 CREATE INDEX IF NOT EXISTS idx_stock_daily_date ON stock_daily(trade_date);
 CREATE INDEX IF NOT EXISTS idx_screen_results_date ON screen_results(trade_date);
 CREATE INDEX IF NOT EXISTS idx_screen_results_engine ON screen_results(engine);
+CREATE INDEX IF NOT EXISTS idx_index_daily_date ON index_daily(trade_date);
 """
 
 
@@ -103,6 +118,11 @@ def get_db(write: bool = False) -> sqlite3.Connection:
     from nous.core.db import _resolve_path
 
     path = _resolve_path("screener.db")
+    if not write and not Path(path).exists():
+        raise FileNotFoundError(
+            f"Database not found: {path}. Run: nous data bootstrap"
+        )
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
 
     if write:

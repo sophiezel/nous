@@ -1,7 +1,7 @@
 #!/bin/bash
 # Watchdog: keep overnight history backfill alive until coverage gate or morning.
 set -u
-ROOT="~/code/nous"
+ROOT="${NOUS_ROOT:-$HOME/code/nous}"
 LOG="$HOME/nous-data/logs"
 CKPT="$HOME/nous-data/backfill_checkpoints/stock_daily_2014.json"
 PY="$ROOT/.venv/bin/python"

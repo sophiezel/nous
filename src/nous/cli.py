@@ -15,8 +15,13 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
+
+from nous.core.envload import load_runtime_env
+
+load_runtime_env()
 
 import typer
 from rich.console import Console
@@ -31,6 +36,20 @@ app = typer.Typer(
 )
 
 console = Console()
+
+
+def _require_market_data() -> None:
+    from nous.data.storage import get_db
+
+    try:
+        conn = get_db(write=False)
+        n = conn.execute("SELECT COUNT(*) FROM stock_daily").fetchone()[0]
+        conn.close()
+    except Exception:
+        n = 0
+    if n < 100:
+        console.print("[red]行情未就绪。请运行: nous data bootstrap[/red]")
+        raise typer.Exit(1)
 
 
 @app.callback()
@@ -61,6 +80,7 @@ def screen(
     from nous.engine.pipelines.trl_recommender import run_trl_track
 
     t0 = time.time()
+    _require_market_data()
     conn = get_db(write=False)
     try:
         report_date = date or conn.execute("SELECT MAX(trade_date) FROM stock_daily").fetchone()[0]
@@ -119,6 +139,7 @@ def review(
     from nous.engine.signals.crocodile_signals import evaluate_crocodile_signals
 
     t0 = time.time()
+    _require_market_data()
     conn = get_db(write=False)
     try:
         report_date = date or conn.execute("SELECT MAX(trade_date) FROM stock_daily").fetchone()[0]
@@ -171,6 +192,7 @@ def recommend(
     from nous.engine.signals.crocodile_signals import evaluate_crocodile_signals
 
     t0 = time.time()
+    _require_market_data()
     conn = get_db(write=False)
     try:
         report_date = date or conn.execute("SELECT MAX(trade_date) FROM stock_daily").fetchone()[0]
@@ -223,7 +245,7 @@ def recommend(
 def data(
     action: str = typer.Argument(
         "status",
-        help="status|health|freshness|assert|update|list|chain",
+        help="status|health|freshness|assert|update|list|chain|bootstrap",
     ),
     source: str = typer.Option("all", "--source", "-s", help="数据源: all|daily|fundamental|index|margin|hsgt|lhb|fund-flow|futures|sentiment|industry|global-index"),
     domain: str = typer.Option("all", "--domain", "-d", help="assert 域: micro|macro|capital|factor|recommend|all"),
@@ -249,11 +271,32 @@ def data(
         _data_update("list")
     elif action == "chain":
         _data_chain(chain)
+    elif action == "bootstrap":
+        _data_bootstrap()
     else:
         console.print(
             "[yellow]未知操作: "
-            f"{action}. 可用: status, health, freshness, assert, update, list, chain[/yellow]"
+            f"{action}. 可用: status, health, freshness, assert, update, list, chain, bootstrap[/yellow]"
         )
+
+
+def _data_bootstrap():
+    """Cold-start: schema + liquid universe + ~1y daily + indexes."""
+    from nous.data.bootstrap import run_bootstrap
+
+    console.print(Panel.fit("[bold cyan]数据冷启动[/bold cyan]", border_style="cyan"))
+    console.print("  拉取股票列表与基本面，并回填高流动性标的近一年日线（约数分钟）…\n")
+    try:
+        result = run_bootstrap()
+    except Exception as e:
+        console.print(f"  [red]失败: {e}[/red]")
+        raise typer.Exit(1)
+    color = "green" if result.get("ok") else "red"
+    console.print(f"  股票: {result.get('stock_basic')}  日线行: {result.get('stock_daily_rows')}")
+    console.print(f"  裁决: [{color}]{'就绪' if result.get('ok') else '未就绪'}[/{color}]  耗时={result.get('elapsed_s')}s")
+    console.print("  下一步: nous screen   或  nous recommend")
+    if not result.get("ok"):
+        raise typer.Exit(1)
 
 
 def _data_chain(action: str = "status"):

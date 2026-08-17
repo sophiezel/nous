@@ -9,7 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path("~/code/stock-screener/data/screener.db")
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 
 DDL = """
 CREATE TABLE IF NOT EXISTS sim_pnl_snapshot (

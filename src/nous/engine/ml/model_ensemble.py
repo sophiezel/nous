@@ -56,10 +56,12 @@ def _load_optimized_params(model_name: str) -> dict | None:
         logger.warning(f"  解析 {latest} 失败: {e}")
     return None
 
-FACTOR_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factors"
-MODEL_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "models"
-IC_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "ic_analysis"
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import factor_dir, model_dir, screener_db
+
+FACTOR_DIR = factor_dir()
+MODEL_DIR = model_dir()
+IC_DIR = factor_dir().parent / "ic_analysis"
+DB_PATH = screener_db()
 
 
 # ──────────────────────────────────────────────

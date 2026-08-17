@@ -28,6 +28,9 @@ venv/
 *.db-shm
 nous-data/
 
+# Generated from .plist.template by install.sh
+scheduler/launchd/com.nous.scheduler.plist
+
 # OS
 .DS_Store
 Thumbs.db

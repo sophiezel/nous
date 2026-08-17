@@ -1,8 +1,9 @@
 """只读 SQLite 连接 — 线程级单例, busy_timeout, 重试"""
 import sqlite3, os, time, threading
+from nous.core.paths import reports_db, screener_db
 
-SCREENER_DB = os.path.expanduser("~/code/stock-screener/data/screener.db")
-REPORTS_DB = os.path.expanduser("~/code/dashboard/data/reports.db")
+SCREENER_DB = str(screener_db())
+REPORTS_DB = str(reports_db())
 
 # 线程本地存储: 每个线程持有自己的只读连接
 _local = threading.local()

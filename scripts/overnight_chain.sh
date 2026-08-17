@@ -1,7 +1,7 @@
 #!/bin/bash
 # Continue overnight steps; if 2014 backfill already running, wait for it.
 set -u
-ROOT="~/code/nous"
+ROOT="${NOUS_ROOT:-$HOME/code/nous}"
 LOG="$HOME/nous-data/logs"
 PY="$ROOT/.venv/bin/python"
 export PYTHONPATH="$ROOT/src"

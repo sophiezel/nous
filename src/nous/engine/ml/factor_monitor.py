@@ -29,9 +29,11 @@ logger = logging.getLogger(__name__)
 # 路径
 # ──────────────────────────────────────────────
 
-FACTOR_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factors"
-IC_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "ic_analysis"
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import factor_dir, screener_db
+
+FACTOR_DIR = factor_dir()
+IC_DIR = factor_dir().parent / "ic_analysis"
+DB_PATH = screener_db()
 
 
 # ──────────────────────────────────────────────

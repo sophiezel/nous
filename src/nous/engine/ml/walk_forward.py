@@ -24,9 +24,11 @@ from scipy.stats import spearmanr
 
 logger = logging.getLogger(__name__)
 
-FACTOR_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factors"
-MODEL_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "models"
-IC_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "ic_analysis"
+from nous.core.paths import factor_dir, model_dir
+
+FACTOR_DIR = factor_dir()
+MODEL_DIR = model_dir()
+IC_DIR = factor_dir().parent / "ic_analysis"
 
 @dataclass
 class TimeSplit:

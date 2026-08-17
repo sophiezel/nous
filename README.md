@@ -22,16 +22,19 @@ gh repo clone sophiezel/nous ~/code/nous && cd ~/code/nous && bash install.sh
 cd ~/code/nous && bash install.sh
 ```
 
-安装脚本会：创建 `.venv`、装齐依赖、把 `nous` 链到 `~/bin` 并写入 PATH。  
-**装完后新开终端即可直接用 `nous`，不必再 `source .venv/bin/activate`。**
+安装脚本会：检查 Python 3.11–3.13、创建 `.venv`、安装依赖、写入 PATH，并**联网冷启动**高流动性 A 股近一年日线。  
+**装完后新开终端即可 `nous screen` / `nous recommend`，不必 `source .venv/bin/activate`。**
 
 ```bash
 source ~/.zshrc   # 当前终端立刻生效；或新开终端
 nous version
-nous --help
+nous screen -n 20
+nous recommend -n 10
 ```
 
-数据目录：`~/nous-data/`（`screener.db`、`factors/`、`models/`）。
+数据目录：`~/nous-data/`。跳过冷启动：`NOUS_SKIP_BOOTSTRAP=1 bash install.sh`，之后再跑 `nous data bootstrap`。
+
+LLM 解读（可选）：编辑 `~/code/nous/.env` 填入 `DEEPSEEK_API_KEY`。筛股/荐股不依赖它。
 
 ## 架构
 
@@ -83,11 +86,13 @@ nous accept
 
 ### 数据管理
 ```bash
+nous data bootstrap              # 空库冷启动（安装时已跑）
 nous data status
 nous data health
 nous data freshness
 nous data assert                 # 鲜度+完整性门禁（P0 失败非零退出）
 nous data assert --consumer recommend
+nous data chain --chain post-close
 nous data list
 nous data update -s all
 ```
@@ -108,9 +113,10 @@ nous version
 
 ## 环境要求
 
-- Python 3.11+（推荐 3.12/3.13）
+- Python 3.11–3.13（3.14 不支持）
+- 能访问行情源（东方财富 / akshare）
 - SQLite 3.35+ (WAL)
-- DeepSeek API Key
-- macOS (launchd) 或 Linux (systemd)
+- DeepSeek API Key（仅 LLM 解读，可选）
+- 调度：macOS launchd（install 生成 plist）；Linux 需自行配 systemd
 
 开发者可选：`make test` / `make acceptance`（内部转调 `nous accept`），日常请用 `nous`。

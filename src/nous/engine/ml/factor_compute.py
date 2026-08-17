@@ -29,8 +29,10 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 # ── Paths ────────────────────────────────────────────────────────────────
-DB_PATH = Path.home() / "nous-data" / "screener.db"
-FACTOR_DIR = Path.home() / "nous-data" / "factors"
+from nous.core.paths import factor_dir, screener_db
+
+DB_PATH = screener_db()
+FACTOR_DIR = factor_dir()
 FACTOR_SNAPSHOT_DIR = FACTOR_DIR / "snapshots"
 
 

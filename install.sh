@@ -1,5 +1,5 @@
 #!/bin/bash
-# Nous 一键安装脚本 — 装完直接用 nous，无需 source .venv
+# Nous 一键安装 — 克隆、依赖、冷启动数据。装完可直接 nous screen / recommend
 set -e
 
 REPO="https://github.com/sophiezel/nous.git"
@@ -14,56 +14,60 @@ echo "  Nous 量化投研系统 — 一键安装"
 echo "========================================="
 echo ""
 
+PYVER="$(python3 -c 'import sys; print("%d.%d" % (sys.version_info.major, sys.version_info.minor))' 2>/dev/null || true)"
+case "$PYVER" in
+    3.11|3.12|3.13) echo "Python $PYVER" ;;
+    *)
+        echo "需要 Python 3.11–3.13，当前: ${PYVER:-未找到 python3}"
+        echo "macOS: brew install python@3.12"
+        exit 1
+        ;;
+esac
+
 # --- 1. Clone ----------------------------------------------------------
-# bash reads scripts by file offset; re-exec after pull so a rewritten
-# install.sh cannot turn later comment bytes (e.g. "─") into commands.
 if [ -d "$INSTALL_DIR" ]; then
     if [ "${NOUS_INSTALL_SKIP_PULL:-0}" != "1" ]; then
-        echo "[1/7] 仓库已存在, 更新..."
+        echo "[1/8] 仓库已存在, 更新..."
         cd "$INSTALL_DIR" && git pull
         exec env NOUS_INSTALL_SKIP_PULL=1 bash "$INSTALL_DIR/install.sh" "$@"
     fi
 else
-    echo "[1/7] 克隆仓库..."
+    echo "[1/8] 克隆仓库..."
     mkdir -p "$(dirname "$INSTALL_DIR")"
     git clone "$REPO" "$INSTALL_DIR"
 fi
 
 # --- 2. Python venv ----------------------------------------------------
-echo "[2/7] 创建虚拟环境..."
+echo "[2/8] 创建虚拟环境..."
 cd "$INSTALL_DIR"
 python3 -m venv "$VENV" 2>/dev/null || python3 -m venv "$VENV" --without-pip
 
 # --- 3. Install --------------------------------------------------------
-# V2: ml(LightGBM+pyarrow) trading(PyPortfolioOpt/HRP) backtest
-# 注: Python 3.14 下 pandas-ta/numba 不可用，已从 backtest extras 移除
-echo "[3/7] 安装依赖 (dev/api/scheduler/ml/trading/backtest)..."
+echo "[3/8] 安装依赖 (api/scheduler/ml/trading/backtest)..."
 "$VENV/bin/pip" install --upgrade pip -q
-"$VENV/bin/pip" install -e ".[dev,api,scheduler,ml,trading,backtest]" -q
+"$VENV/bin/pip" install -e ".[api,scheduler,ml,trading,backtest]" -q
 
 # --- 4. Config ---------------------------------------------------------
-echo "[4/7] 配置..."
+echo "[4/8] 配置..."
 [ -f "$INSTALL_DIR/.env" ] || cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
-echo "  → 请编辑 $INSTALL_DIR/.env 填入 DEEPSEEK_API_KEY"
+echo "  → LLM 可选: 编辑 $INSTALL_DIR/.env 填入 DEEPSEEK_API_KEY"
+echo "  → 筛股/荐股不强制需要 Key"
 
 # --- 5. Data dir -------------------------------------------------------
-echo "[5/7] 数据目录..."
+echo "[5/8] 数据目录 $DATA_DIR ..."
 mkdir -p "$DATA_DIR"/{logs,factors,models,ic_analysis}
-for db in "$HOME/code/stock-screener/data/screener.db" "$INSTALL_DIR/data/screener.db"; do
-    if [ -f "$db" ] && [ ! -f "$DATA_DIR/screener.db" ]; then
-        ln -sf "$db" "$DATA_DIR/screener.db"
-        echo "  → 已链接 screener.db ← $db"
-        break
-    fi
-done
-echo "  → 数据根目录: $DATA_DIR"
 
-# --- 6. 全局命令（无需 activate）---------------------------------------
-echo "[6/7] 注册全局命令 nous..."
+# --- 6. 全局命令 -------------------------------------------------------
+echo "[6/8] 注册全局命令 nous..."
 mkdir -p "$BIN_DIR"
-ln -sfn "$NOUS_BIN" "$BIN_DIR/nous"
+cat > "$BIN_DIR/nous" <<EOF
+#!/bin/bash
+export NOUS_CONFIG_DIR="$INSTALL_DIR/config"
+export NOUS_DATA_DIR="\${NOUS_DATA_DIR:-$DATA_DIR}"
+exec "$NOUS_BIN" "\$@"
+EOF
+chmod +x "$BIN_DIR/nous"
 
-# PATH: ~/bin
 if ! echo ":$PATH:" | grep -q ":$BIN_DIR:"; then
     if [ -f "$HOME/.zshrc" ] && ! grep -q 'export PATH="$HOME/bin:$PATH"' "$HOME/.zshrc" 2>/dev/null; then
         echo 'export PATH="$HOME/bin:$PATH"' >> "$HOME/.zshrc"
@@ -75,47 +79,50 @@ if ! echo ":$PATH:" | grep -q ":$BIN_DIR:"; then
     fi
 fi
 
-# 兼容旧 alias（指向 venv 内 binary，同样无需 activate）
-if grep -q "alias nous=" "$HOME/.zshrc" 2>/dev/null; then
-    # 刷新为最新路径
-    sed -i.bak "s|^alias nous=.*|alias nous=\"$NOUS_BIN\"|" "$HOME/.zshrc" 2>/dev/null \
-        || true
-else
-    echo "alias nous=\"$NOUS_BIN\"" >> "$HOME/.zshrc"
-    echo "  → 已添加 alias nous"
+if [ -f "$HOME/.zshrc" ] && grep -q "alias nous=" "$HOME/.zshrc" 2>/dev/null; then
+    sed -i.bak "s|^alias nous=.*|alias nous=\"$BIN_DIR/nous\"|" "$HOME/.zshrc" 2>/dev/null || true
 fi
 
 export PATH="$BIN_DIR:$PATH"
+export NOUS_CONFIG_DIR="$INSTALL_DIR/config"
+export NOUS_DATA_DIR="$DATA_DIR"
 
-# --- 7. Verify ---------------------------------------------------------
-echo "[7/7] 验证安装..."
+# --- 7. launchd template ----------------------------------------------
+echo "[7/8] 生成调度配置..."
+PLIST_SRC="$INSTALL_DIR/scheduler/launchd/com.nous.scheduler.plist.template"
+PLIST_DST="$INSTALL_DIR/scheduler/launchd/com.nous.scheduler.plist"
+if [ -f "$PLIST_SRC" ]; then
+    sed -e "s|__NOUS_ROOT__|$INSTALL_DIR|g" -e "s|__DATA_DIR__|$DATA_DIR|g" \
+        "$PLIST_SRC" > "$PLIST_DST"
+fi
+
+# --- 8. Bootstrap + verify --------------------------------------------
+echo "[8/8] 冷启动行情（高流动性约 800 只、近一年日线，需联网，数分钟）..."
+if [ "${NOUS_SKIP_BOOTSTRAP:-0}" = "1" ]; then
+    echo "  跳过 bootstrap (NOUS_SKIP_BOOTSTRAP=1)"
+else
+    "$NOUS_BIN" data bootstrap
+fi
 "$NOUS_BIN" version
-"$NOUS_BIN" data status 2>/dev/null || echo "  (数据库未配置, 跳过 data status)"
 
 echo ""
 echo "========================================="
 echo "  安装完成 — 无需 source .venv"
 echo ""
-echo "  新开一个终端，或执行: source ~/.zshrc"
-echo "  之后任意目录直接使用:"
+echo "  新开终端，或: source ~/.zshrc"
 echo ""
-echo "    nous version"
-echo "    nous screen              # 双引擎筛选（海鹰F3+龙脉TRL）"
-echo "    nous review"
-echo "    nous recommend"
-echo "    nous backtest --strategy 海鹰F3"
-echo "    nous backtest --strategy 龙脉TRL"
-echo "    nous accept              # 双引擎 WF 验收（海鹰+龙脉）"
+echo "    nous screen              # 筛选（装完即可）"
+echo "    nous recommend           # 荐股（装完即可）"
+echo "    nous review              # 鳄鱼派复盘"
 echo "    nous data status"
-echo "    nous data health"
-echo "    nous trade check"
-echo "    nous model status"
-echo "    nous cron list"
-echo "    nous serve"
+echo "    nous data chain --chain post-close   # 收盘全链路（更全）"
 echo ""
-echo "  验收产物: $INSTALL_DIR/docs/acceptance/<日期>/ACCEPTANCE_REPORT.md"
+echo "  回测/验收需要更长历史与因子，请再跑:"
+echo "    nous data chain --chain S2"
+echo "    nous backtest --strategy 海鹰F3"
 echo ""
-echo "  调度器守护进程:"
-echo "    cp $INSTALL_DIR/scheduler/launchd/com.nous.scheduler.plist ~/Library/LaunchAgents/"
+echo "  可选调度 (macOS):"
+echo "    mkdir -p ~/Library/LaunchAgents"
+echo "    cp $PLIST_DST ~/Library/LaunchAgents/"
 echo "    launchctl load ~/Library/LaunchAgents/com.nous.scheduler.plist"
 echo "========================================="

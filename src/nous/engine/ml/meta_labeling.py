@@ -329,8 +329,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == "train":
-        FACTOR_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factors"
-        factor_path = FACTOR_DIR / "latest.parquet"
+        from nous.core.paths import factor_dir
+        factor_path = factor_dir() / "latest.parquet"
         if not factor_path.exists():
             print(f"因子快照不存在: {factor_path}")
             exit(1)

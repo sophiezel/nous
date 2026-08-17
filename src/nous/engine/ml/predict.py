@@ -10,11 +10,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]  # nous repo root))
+from nous.core.paths import factor_dir, model_dir, screener_db
 
-MODEL_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "models"
-FACTOR_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factors"
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+MODEL_DIR = model_dir()
+FACTOR_DIR = factor_dir()
+DB_PATH = screener_db()
 
 
 def load_latest_model():

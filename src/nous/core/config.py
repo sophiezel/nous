@@ -13,6 +13,10 @@ from typing import Any
 
 import yaml
 
+from nous.core.envload import load_runtime_env
+
+load_runtime_env()
+
 
 # ── Built-in defaults (used when config files are missing) ──────────────
 _DEFAULTS = {

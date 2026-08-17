@@ -14,8 +14,9 @@ from pathlib import Path
 from typing import Optional
 
 def _get_default_db() -> Path:
-    return Path(os.environ.get("SCREENER_DB_PATH",
-        str(Path.home() / "code/stock-screener/data/screener.db")))
+    from nous.core.paths import screener_db
+
+    return screener_db()
 
 # ── 规则排除阈值 ──────────────────────────────────
 

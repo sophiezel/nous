@@ -25,7 +25,9 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 
 # ── 路径 ────────────────────────────────────────────────
-PROJECT_DIR = "~/code/stock-screener"
+from nous.core.paths import repo_root
+
+PROJECT_DIR = str(repo_root())
 sys.path.insert(0, PROJECT_DIR)
 
 import requests

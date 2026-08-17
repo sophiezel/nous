@@ -3,7 +3,9 @@
 import re, json, time, urllib.parse
 from playwright.sync_api import sync_playwright
 
-OUTPUT = '~/wiki/finance/raw/articles/crocodile-wechat-urls.json'
+from pathlib import Path
+
+OUTPUT = str(Path.home() / "wiki/finance/raw/articles/crocodile-wechat-urls.json")
 
 KEYWORDS = [
     '像鳄鱼一样思考',

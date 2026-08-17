@@ -11,7 +11,9 @@ import pandas as pd
 import sqlite3
 from datetime import date
 
-DB = Path("~/code/stock-screener/data/screener.db")
+from nous.core.paths import screener_db
+
+DB = screener_db()
 
 BOARD_DDL = """
 CREATE TABLE IF NOT EXISTS hsgt_board_daily (

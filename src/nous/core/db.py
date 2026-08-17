@@ -34,13 +34,16 @@ def _resolve_path(db_name: str) -> str:
     if db_name == ":memory:" or db_name.startswith("/") or db_name.startswith("~"):
         return str(Path(db_name).expanduser())
 
-    # Try to resolve via config
-    try:
-        from nous.core.config import config
+    override = os.environ.get("NOUS_DATA_DIR", "").strip()
+    if override:
+        data_dir = Path(override).expanduser()
+    else:
+        try:
+            from nous.core.config import config
 
-        data_dir = Path(config.nous.data_dir).expanduser()
-    except Exception:
-        data_dir = Path.home() / "nous-data"
+            data_dir = Path(config.nous.data_dir).expanduser()
+        except Exception:
+            data_dir = Path.home() / "nous-data"
 
     full_path = data_dir / db_name
     return str(full_path)
