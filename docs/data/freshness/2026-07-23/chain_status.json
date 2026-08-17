@@ -1,0 +1,22 @@
+{
+  "chain": "stage-S3",
+  "as_of": "2026-07-23",
+  "ok": true,
+  "elapsed_s": 21.24,
+  "stopped_at": null,
+  "stages": [
+    {
+      "name": "S3",
+      "ok": true,
+      "message": "P0=ok P1=ok",
+      "elapsed_s": 21.23,
+      "details": {
+        "p0_ok": true,
+        "p1_ok": true,
+        "degraded": [],
+        "report": "~/code/nous/docs/data/freshness/2026-07-23/FRESHNESS_REPORT.md",
+        "failed": []
+      }
+    }
+  ]
+}

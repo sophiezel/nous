@@ -279,6 +279,8 @@ def save_factor_snapshot(
     factors_df: pd.DataFrame,
     snapshot_date: Optional[str] = None,
     market: str = "a",
+    *,
+    merge_into_latest: bool = False,
 ) -> str:
     """保存因子快照到 Parquet，同时更新 latest + as_of meta。
 
@@ -286,6 +288,9 @@ def save_factor_snapshot(
       snapshots/{date}.parquet
       snapshots/factors_{date}.parquet  (compat)
       latest.parquet + latest.meta.json
+
+    If merge_into_latest=True, replace overlapping (symbol, trade_date) in existing
+    latest.parquet and keep older history (daily incremental path).
     """
     import json
 
@@ -294,26 +299,50 @@ def save_factor_snapshot(
 
     if snapshot_date is None:
         if "trade_date" in factors_df.columns:
-            snapshot_date = str(factors_df["trade_date"].max())[:10]
+            snapshot_date = str(pd.to_datetime(factors_df["trade_date"]).max())[:10]
         else:
             snapshot_date = date.today().isoformat()
 
     prefix = "hk_" if market == "hk" else ""
-    # Canonical dated path + compat alias
+    out_df = factors_df
+
+    if merge_into_latest and "trade_date" in factors_df.columns and "symbol" in factors_df.columns:
+        latest_path = FACTOR_DIR / f"{prefix}latest.parquet"
+        if latest_path.exists():
+            try:
+                old = pd.read_parquet(latest_path)
+                old["trade_date"] = pd.to_datetime(old["trade_date"])
+                new = factors_df.copy()
+                new["trade_date"] = pd.to_datetime(new["trade_date"])
+                min_new = new["trade_date"].min()
+                kept = old[old["trade_date"] < min_new]
+                out_df = pd.concat([kept, new], ignore_index=True)
+                out_df = out_df.drop_duplicates(subset=["symbol", "trade_date"], keep="last")
+                out_df = out_df.sort_values(["symbol", "trade_date"])
+                logger.info(
+                    f"增量合并: old={len(old)} + new={len(new)} → {len(out_df)} "
+                    f"(cut<{min_new.date()})"
+                )
+            except Exception as e:
+                logger.warning(f"增量合并失败, 覆盖写入: {e}")
+                out_df = factors_df
+
+    # Dated snapshot: full merged bundle (compat with assert as_of naming)
     path = FACTOR_SNAPSHOT_DIR / f"{prefix}{snapshot_date}.parquet"
-    factors_df.to_parquet(path, index=False)
+    out_df.to_parquet(path, index=False)
     compat = FACTOR_SNAPSHOT_DIR / f"{prefix}factors_{snapshot_date}.parquet"
     if compat != path:
-        factors_df.to_parquet(compat, index=False)
+        out_df.to_parquet(compat, index=False)
 
     latest_path = FACTOR_DIR / f"{prefix}latest.parquet"
-    factors_df.to_parquet(latest_path, index=False)
+    out_df.to_parquet(latest_path, index=False)
     meta = {
         "as_of": snapshot_date,
         "market": market,
-        "n_rows": int(len(factors_df)),
-        "n_factors": int(len([c for c in factors_df.columns if str(c).startswith("K")])),
+        "n_rows": int(len(out_df)),
+        "n_factors": int(len([c for c in out_df.columns if str(c).startswith("K")])),
         "saved_at": date.today().isoformat(),
+        "merge": bool(merge_into_latest),
     }
     (FACTOR_DIR / f"{prefix}latest.meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -323,8 +352,23 @@ def save_factor_snapshot(
     )
 
     n_factors = meta["n_factors"]
-    logger.info(f"快照: {path} ({len(factors_df)}行, {n_factors}因子, as_of={snapshot_date})")
+    logger.info(f"快照: {path} ({len(out_df)}行, {n_factors}因子, as_of={snapshot_date})")
     return str(path)
+
+
+def daily_factor_update(
+    lookback_calendar_days: int = 150,
+    market: str = "a",
+    engine: str = "pandas",
+) -> str:
+    """日更：重算近窗因子并合并进 latest（供 Provider DAG S2）。"""
+    from datetime import timedelta
+
+    end = date.today()
+    start = (end - timedelta(days=lookback_calendar_days)).isoformat()
+    logger.info(f"因子日更: market={market} start={start} lookback={lookback_calendar_days}d")
+    df = compute_all_factors(start_date=start, end_date=None, market=market, engine=engine)
+    return save_factor_snapshot(df, market=market, merge_into_latest=True)
 
 
 def compute_ic(factors_df: pd.DataFrame, forward_returns: pd.Series) -> dict:
@@ -376,14 +420,24 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser(description="因子计算引擎")
-    parser.add_argument("action", choices=["compute", "save"], default="compute", nargs="?")
+    parser.add_argument("action", choices=["compute", "save", "daily"], default="compute", nargs="?")
     parser.add_argument("--start", default="2020-01-01")
     parser.add_argument("--end", default=None)
     parser.add_argument("--limit", type=int, default=0, help="限制股票数(0=全量)")
     parser.add_argument("--engine", choices=["pandas", "polars"], default="pandas",
                         help="pandas=快速(默认) / polars=大数据优化")
     parser.add_argument("--market", default="a")
+    parser.add_argument("--lookback", type=int, default=150, help="daily 模式日历回看天数")
     args = parser.parse_args()
+
+    if args.action == "daily":
+        path = daily_factor_update(
+            lookback_calendar_days=args.lookback,
+            market=args.market,
+            engine=args.engine,
+        )
+        print(f"Saved: {path}")
+        raise SystemExit(0)
 
     # Resolve symbols
     symbols = None

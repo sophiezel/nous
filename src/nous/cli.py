@@ -221,10 +221,18 @@ def recommend(
 
 @app.command()
 def data(
-    action: str = typer.Argument("status", help="status|health|freshness|assert|update|list"),
+    action: str = typer.Argument(
+        "status",
+        help="status|health|freshness|assert|update|list|chain",
+    ),
     source: str = typer.Option("all", "--source", "-s", help="数据源: all|daily|fundamental|index|margin|hsgt|lhb|fund-flow|futures|sentiment|industry|global-index"),
     domain: str = typer.Option("all", "--domain", "-d", help="assert 域: micro|macro|capital|factor|recommend|all"),
     consumer: str = typer.Option("all", "--consumer", "-c", help="assert 消费者: recommend|trl|review|backtest|all"),
+    chain: str = typer.Option(
+        "status",
+        "--chain",
+        help="chain 子命令: status|post-close|morning|S1|S2|S3|S4|S5",
+    ),
 ):
     """数据管线管理."""
     if action == "status":
@@ -239,8 +247,68 @@ def data(
         _data_update(source)
     elif action == "list":
         _data_update("list")
+    elif action == "chain":
+        _data_chain(chain)
     else:
-        console.print(f"[yellow]未知操作: {action}. 可用: status, health, freshness, assert, update, list[/yellow]")
+        console.print(
+            "[yellow]未知操作: "
+            f"{action}. 可用: status, health, freshness, assert, update, list, chain[/yellow]"
+        )
+
+
+def _data_chain(action: str = "status"):
+    """Provider DAG: Features→Factors→Assert→Consume→Observe."""
+    from nous.data.quality import pipeline_dag as dag
+
+    console.print(Panel.fit("[bold cyan]Provider DAG[/bold cyan]", border_style="cyan"))
+    action = (action or "status").strip()
+    if action == "status":
+        st = dag.read_status()
+        if not st:
+            console.print("  [yellow]无 chain_status.json[/yellow]")
+            raise typer.Exit(1)
+        color = "green" if st.get("ok") else "red"
+        console.print(
+            f"  链: {st.get('chain')}  裁决: [{color}]"
+            f"{'通过' if st.get('ok') else '未通过'}[/{color}]  "
+            f"耗时={st.get('elapsed_s')}s"
+        )
+        for s in st.get("stages") or []:
+            mark = "✓" if s.get("ok") else "✗"
+            c = "green" if s.get("ok") else "red"
+            console.print(
+                f"  [{c}]{mark}[/{c}] {s.get('name')}: {s.get('message', '')} "
+                f"({s.get('elapsed_s')}s)"
+            )
+        if not st.get("ok"):
+            raise typer.Exit(1)
+        return
+
+    if action == "post-close":
+        result = dag.run_post_close()
+    elif action == "morning":
+        result = dag.run_morning()
+    elif action.upper() in dag.STAGES:
+        result = dag.run_stage(action.upper())
+    else:
+        console.print(
+            f"[yellow]未知 chain 动作: {action}. "
+            "可用: status|post-close|morning|S1|S2|S3|S4|S5[/yellow]"
+        )
+        raise typer.Exit(2)
+
+    color = "green" if result.ok else "red"
+    console.print(
+        f"  裁决: [{color}]{'通过' if result.ok else '未通过'}[/{color}]  "
+        f"链={result.chain}  耗时={result.elapsed_s}s"
+    )
+    for s in result.stages:
+        mark = "✓" if s.ok else "✗"
+        c = "green" if s.ok else "red"
+        console.print(f"  [{c}]{mark}[/{c}] {s.name}: {s.message} ({s.elapsed_s}s)")
+    console.print(f"  [dim]状态: {dag.STATUS_PATH}[/dim]")
+    if not result.ok:
+        raise typer.Exit(1)
 
 
 def _data_assert(domain: str = "all", consumer: str = "all"):

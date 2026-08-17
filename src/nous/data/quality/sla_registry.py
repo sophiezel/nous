@@ -5,7 +5,7 @@ All assert / gap_detector / pipeline readiness should read this module.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -16,6 +16,16 @@ class Priority(str, Enum):
     P1 = "P1"  # degrade / block short
     P2 = "P2"  # warn / neutral signal
     P3 = "P3"  # weekly report only
+
+
+class ProduceStage(str, Enum):
+    """DAG stage that produces this asset."""
+
+    FEATURES = "features"  # S1
+    FACTORS = "factors"  # S2
+    PRODUCTS = "products"  # S4
+    MODELS = "models"  # weekly only
+    NONE = "none"  # existence-only / no auto producer
 
 
 @dataclass(frozen=True)
@@ -39,6 +49,9 @@ class AssetSLA:
     max_age_calendar_days: Optional[int] = None  # for model mtime
     require_as_of_match: bool = False  # factor latest must match last trade date snapshot
     label: str = ""
+    # Producer DAG (2026-07-23)
+    produce_stage: ProduceStage = ProduceStage.NONE
+    remediable: bool = False  # morning chain may auto-reproduce once
 
 
 def _home() -> Path:
@@ -67,6 +80,8 @@ ASSETS: list[AssetSLA] = [
         max_lag_trading_days=1,
         min_coverage_pct=80.0,
         label="A股日线",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="stock_basic",
@@ -77,6 +92,8 @@ ASSETS: list[AssetSLA] = [
         date_col="",  # existence / count only
         min_rows=1,
         label="股票基础信息",
+        produce_stage=ProduceStage.NONE,
+        remediable=False,
     ),
     # B fundamental P1
     AssetSLA(
@@ -88,6 +105,8 @@ ASSETS: list[AssetSLA] = [
         date_col="snapshot_date",
         max_lag_trading_days=2,
         label="基本面快照",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     # A macro
     AssetSLA(
@@ -99,6 +118,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=1,
         label="指数日线",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="index_global_daily",
@@ -109,6 +130,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=2,
         label="全球指数",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="futures_daily",
@@ -119,6 +142,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=1,
         label="期货日线",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="futures_basis",
@@ -129,6 +154,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=1,
         label="期指基差",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="sentiment_cache",
@@ -139,6 +166,8 @@ ASSETS: list[AssetSLA] = [
         date_col="date",  # live schema uses date, not trade_date
         max_lag_trading_days=1,
         label="市场情绪",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     # C capital
     AssetSLA(
@@ -150,6 +179,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=1,
         label="沪深港通市场",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="hsgt_stock_daily",
@@ -160,6 +191,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=3,
         label="沪深港通个股",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="fund_flow_stock",
@@ -170,6 +203,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=2,
         label="个股资金流向",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="margin_daily",
@@ -180,6 +215,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=2,
         label="融资融券",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="etf_flow_daily",
@@ -190,6 +227,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=2,
         label="ETF资金流",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     AssetSLA(
         key="block_trades",
@@ -200,6 +239,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=2,
         label="大宗交易",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     # D LHB
     AssetSLA(
@@ -211,6 +252,8 @@ ASSETS: list[AssetSLA] = [
         date_col="trade_date",
         max_lag_trading_days=2,
         label="龙虎榜",
+        produce_stage=ProduceStage.FEATURES,
+        remediable=True,
     ),
     # E factors / models
     AssetSLA(
@@ -223,6 +266,8 @@ ASSETS: list[AssetSLA] = [
         min_rows=500,
         require_as_of_match=True,
         label="A股因子 latest",
+        produce_stage=ProduceStage.FACTORS,
+        remediable=True,
     ),
     AssetSLA(
         key="factors_snapshot",
@@ -233,6 +278,8 @@ ASSETS: list[AssetSLA] = [
         max_lag_trading_days=1,
         min_rows=500,
         label="A股因子 dated snapshot",
+        produce_stage=ProduceStage.FACTORS,
+        remediable=True,
     ),
     AssetSLA(
         key="models_lgb",
@@ -242,8 +289,10 @@ ASSETS: list[AssetSLA] = [
         path_glob="~/nous-data/models/lgb_*.pkl",
         max_age_calendar_days=14,
         label="LightGBM 模型",
+        produce_stage=ProduceStage.MODELS,
+        remediable=False,
     ),
-    # F recommend products (optional depending on time of day)
+    # F recommend products (produced in S4; not asserted in S3 gate)
     AssetSLA(
         key="screen_results",
         domain="recommend",
@@ -253,6 +302,8 @@ ASSETS: list[AssetSLA] = [
         date_col="screen_date",
         max_lag_trading_days=1,
         label="筛选结果",
+        produce_stage=ProduceStage.PRODUCTS,
+        remediable=False,
     ),
     AssetSLA(
         key="theme_auto_pools",
@@ -263,8 +314,18 @@ ASSETS: list[AssetSLA] = [
         date_col="scan_date",
         max_lag_trading_days=1,
         label="龙脉主题池",
+        produce_stage=ProduceStage.PRODUCTS,
+        remediable=False,
     ),
 ]
+
+
+def assets_for_stage(stage: ProduceStage) -> list[AssetSLA]:
+    return [a for a in ASSETS if a.produce_stage == stage]
+
+
+def remediable_assets() -> list[AssetSLA]:
+    return [a for a in ASSETS if a.remediable]
 
 
 @dataclass(frozen=True)

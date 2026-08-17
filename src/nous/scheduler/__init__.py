@@ -48,36 +48,27 @@ def _run_cmd(cmd: str, timeout: int = 300, workdir: str = ""):
 
 # ── Job definitions ─────────────────────────────────────────────────────
 # Format: (name, schedule, command, description, timeout_sec)
+#
+# Freshness Provider DAG (2026-07-23):
+#   post-close-chain = S1 Features → S2 Factors → S3 Assert → S4 Consume → S5 Observe
+#   morning-chain    = assert → remediable reproduce → re-assert
+# Close-path ETL/assert/recommend ONLY via these chains (no parallel legacy cron).
 
 JOBS = [
-    # === Data Collection ===
-    ("daily-update",       "56 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_stock_daily; collect_stock_daily()\"", "日线更新", 300),
-    ("full-daily-update",  "45 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_all; collect_all(['daily','index','fund-flow','lhb'])\"", "收盘全量采集", 7200),
+    # === Provider DAG (canonical) ===
+    ("post-close-chain",   "40 16 * * 1-5", f"{VENV_PYTHON} -m nous.data.quality.pipeline_dag post-close", "收盘全链路", 7200),
+    ("morning-chain",      "30 8 * * 1-5",  f"{VENV_PYTHON} -m nous.data.quality.pipeline_dag morning", "早间断言+补产", 1800),
+
+    # === Intraday / off-DAG collection ===
     ("daily-rollover",     "0 2 * * *",     f"bash {PROJECT_ROOT}/scripts/daily_rollover.sh", "日切", 600),
     ("minute-collector",   "* 9-11,13-15 * * 1-5", f"{VENV_PYTHON} -m nous.data.collectors.minute_collector", "分钟行情", 60),
-    ("futures-fetch",      "30 15 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_futures; collect_futures()\"", "期货", 120),
+    ("futures-fetch",      "30 15 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_futures; collect_futures()\"", "期货(盘后早取)", 120),
     ("global-index",       "30 5 * * 2-6",  f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_global_index; collect_global_index()\"", "全球指数", 300),
-    ("fund-flow",          "38 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_fund_flow; collect_fund_flow()\"", "资金流向", 120),
-    ("lhb-daily",          "35 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_lhb; collect_lhb()\"", "龙虎榜", 180),
-    ("margin-daily",       "5 8 * * 1-5",   f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_margin; collect_margin()\"", "融资融券", 120),
-    ("block-trade",        "40 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_block_trade; collect_block_trade()\"", "大宗交易", 120),
-    ("hsgt-daily",         "38 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_hsgt; collect_hsgt()\"", "沪深港通", 120),
-    ("sentiment",          "35 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_sentiment; collect_sentiment()\"", "市场情绪", 120),
+    ("margin-daily",       "5 8 * * 1-5",   f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_margin; collect_margin()\"", "融资融券(早盘前)", 120),
     ("industry-weekly",    "0 4 * * 0",      f"{VENV_PYTHON} -c \"from nous.data.collectors.unified import collect_industry; collect_industry()\"", "行业分类(周)", 300),
     ("hk-backfill",        "*/30 * * * *",   f"bash {PROJECT_ROOT}/scripts/hk_daily_backfill.sh", "港股回补", 600),
     ("backfill-bao",       "0 3 * * *",      f"{VENV_PYTHON} -m nous.data.collectors.gap_repair", "历史回补", 900),
     ("etf-flow-backfill",  "0 4 * * 0",      f"{VENV_PYTHON} -m nous.data.collectors.etf_flow_collector", "ETF回补", 300),
-
-    # === Data Quality ===
-    ("post-update-verify", "55 16 * * 1-5", f"{VENV_PYTHON} -m nous.data.quality.validators afternoon", "更新验证", 120),
-    ("cross-validate",     "44 16 * * 1-5", f"{VENV_PYTHON} -m nous.data.quality.validators cross", "交叉验证", 300),
-    ("gap-detector",       "50 16 * * 1-5", f"{VENV_PYTHON} -m nous.data.quality.gap_detector", "断点检测", 120),
-    ("data-assert",        "50 16 * * 1-5", f"{VENV_PYTHON} -m nous.data.quality.data_assert --consumer all", "鲜度断言", 180),
-    ("data-assert-am",     "30 8 * * 1-5",  f"{VENV_PYTHON} -m nous.data.quality.data_assert --consumer recommend", "早间鲜度断言", 60),
-    ("data-assert-pm",     "0 17 * * 1-5",  f"{VENV_PYTHON} -m nous.data.quality.validators afternoon", "午后断言", 60),
-    ("health-dashboard",   "5 17 * * 1-5",  f"{VENV_PYTHON} -m nous.data.quality.health_dashboard --json", "健康看板", 120),
-    ("daily-quality-report","10 17 * * 1-5", f"{VENV_PYTHON} -m nous.data.collectors.daily_quality_report", "质量日报", 180),
-    ("factor-freshness",   "10 17 * * 1-5", f"{VENV_PYTHON} -m nous.data.quality.data_assert --domain factor --consumer recommend", "因子鲜度闸", 60),
 
     # === Trading ===
     ("trader-open-buy",    "32 9 * * 1-5",  f"{VENV_PYTHON} {PROJECT_ROOT}/src/nous/scheduler/jobs/trading/trader_open_buy.py", "开盘买入", 30),
@@ -89,15 +80,13 @@ JOBS = [
     ("preflight",          "30 9 * * 1-5",  f"{VENV_PYTHON} -c \"from nous.data.quality.validators import preflight; preflight()\"", "开盘检查", 30),
     ("midday-patrol",      "0 11 * * 1-5",  f"{VENV_PYTHON} -c \"from nous.trader.portfolio import midday_patrol; midday_patrol()\"", "午间巡逻", 30),
 
-    # === Reports ===
-    # daily-recommend after assert window (16:50); keep 16:55 so assert/gap finish first
-    ("daily-recommend",    "55 16 * * 1-5", f"{VENV_PYTHON} -m nous.engine.pipelines.daily_recommendation_pipeline", "每日荐股", 600),
-    ("afternoon-review",   "29 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.reports.renderer import generate_review; generate_review()\"", "午后复盘", 300),
+    # === Reports (non-DAG) ===
     ("performance",        "52 16 * * 1-5", f"{VENV_PYTHON} -m nous.trader.reporter", "交易绩效", 120),
     ("portfolio-review",   "20 16 * * 1-5", f"{VENV_PYTHON} -m nous.trader.portfolio portfolio_review", "持仓审计", 120),
 
     # === ML ===
     ("weekly-train",       "0 2 * * 0",     f"{VENV_PYTHON} -m nous.engine.ml.weekly_retrain", "周度训练", 3600),
+    ("factor-full-recompute","30 2 * * 0",  f"{VENV_PYTHON} -m nous.engine.ml.factor_compute save --start 2015-01-01", "因子全量重算(周)", 7200),
     ("model-health",       "30 16 * * 1-5", f"{VENV_PYTHON} -c \"from nous.engine.ml.retrain_trigger import check; check()\"", "模型健康", 120),
     ("ai-pool-refresh",    "31 15 * * 1-5", f"{VENV_PYTHON} -m nous.data.collectors.fetchers.ai_pool_refresh", "AI池刷新", 300),
     ("ai-chain-phase",     "0 9 * * 1-5",   f"{VENV_PYTHON} -c \"from nous.engine.signals.concept_signals import chain_phase; chain_phase()\"", "AI链相位", 60),
