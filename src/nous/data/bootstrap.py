@@ -26,12 +26,16 @@ def run_bootstrap(
     from nous.data.storage import get_db
 
     t0 = time.time()
+    print("  拉取全市场快照…", flush=True)
     conn = get_db(write=True)
     try:
         n_basic = _seed_universe(conn, universe)
+        print(f"  股票列表 {n_basic} 只，回填市值前 {universe} 只日线…", flush=True)
         n_daily = _backfill_daily(conn, universe, lookback_calendar_days, workers)
     finally:
         conn.close()
+
+    print("  拉取指数…", flush=True)
 
     idx = collect_index_daily()
     elapsed = round(time.time() - t0, 1)
@@ -94,33 +98,35 @@ def _seed_universe(conn, universe: int) -> int:
     return len(ranked)
 
 
-def _backfill_one(symbol: str, start: str, end: str) -> list[tuple]:
-    import akshare as ak
-    from nous.data.collectors.unified import _clear_proxies
+def _secid(symbol: str) -> str:
+    if symbol.startswith(("6", "9")):
+        return f"1.{symbol}"
+    return f"0.{symbol}"
 
-    _clear_proxies()
-    df = ak.stock_zh_a_hist(
-        symbol=symbol,
-        period="daily",
-        start_date=start,
-        end_date=end,
-        adjust="qfq",
+
+def _backfill_one(symbol: str, start: str, end: str) -> list[tuple]:
+    """Eastmoney kline via curl_cffi — akshare/requests hit a broken local proxy."""
+    from nous.data.collectors.unified import _em_get
+
+    url = (
+        "https://push2his.eastmoney.com/api/qt/stock/kline/get"
+        f"?secid={_secid(symbol)}&fields1=f1,f2,f3,f4,f5,f6"
+        "&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61"
+        f"&klt=101&fqt=1&beg={start}&end={end}"
     )
-    if df is None or df.empty:
-        return []
+    data = (_em_get(url, timeout=20).json() or {}).get("data") or {}
+    klines = data.get("klines") or []
     out = []
-    for _, row in df.iterrows():
+    for line in klines:
+        parts = str(line).split(",")
+        if len(parts) < 6:
+            continue
+        dt, open_, close, high, low, vol = (
+            parts[0][:10], parts[1], parts[2], parts[3], parts[4], parts[5]
+        )
+        amount = parts[6] if len(parts) > 6 else 0
         out.append(
-            (
-                symbol,
-                str(row.get("日期") or row.get("date") or "")[:10],
-                row.get("开盘", row.get("open")),
-                row.get("最高", row.get("high")),
-                row.get("最低", row.get("low")),
-                row.get("收盘", row.get("close")),
-                row.get("成交量", row.get("volume")),
-                row.get("成交额", row.get("amount", 0)),
-            )
+            (symbol, dt, float(open_), float(high), float(low), float(close), float(vol or 0), float(amount or 0))
         )
     return out
 
@@ -165,6 +171,9 @@ def _backfill_daily(conn, universe: int, lookback_calendar_days: int, workers: i
             if done % 50 == 0:
                 conn.commit()
                 rate = done / max(time.time() - t0, 0.1)
-                logger.info("daily %s/%s (%.1f/s) rows=%s", done, len(symbols), rate, total_rows)
+                print(
+                    f"  日线 {done}/{len(symbols)} ({rate:.1f}/s) rows={total_rows}",
+                    flush=True,
+                )
     conn.commit()
     return total_rows

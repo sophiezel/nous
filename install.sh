@@ -14,15 +14,28 @@ echo "  Nous 量化投研系统 — 一键安装"
 echo "========================================="
 echo ""
 
-PYVER="$(python3 -c 'import sys; print("%d.%d" % (sys.version_info.major, sys.version_info.minor))' 2>/dev/null || true)"
-case "$PYVER" in
-    3.11|3.12|3.13) echo "Python $PYVER" ;;
-    *)
-        echo "需要 Python 3.11–3.13，当前: ${PYVER:-未找到 python3}"
-        echo "macOS: brew install python@3.12"
-        exit 1
-        ;;
-esac
+pick_python() {
+    local cmd ver
+    for cmd in python3.13 python3.12 python3.11 python3; do
+        command -v "$cmd" >/dev/null 2>&1 || continue
+        ver="$("$cmd" -c 'import sys; print("%d.%d" % (sys.version_info.major, sys.version_info.minor))' 2>/dev/null || true)"
+        case "$ver" in
+            3.11|3.12|3.13)
+                echo "$cmd"
+                return 0
+                ;;
+        esac
+    done
+    return 1
+}
+
+PYTHON="$(pick_python || true)"
+if [ -z "$PYTHON" ]; then
+    echo "需要 Python 3.11–3.13（不要用 3.14）。macOS: brew install python@3.13"
+    exit 1
+fi
+PYVER="$("$PYTHON" -c 'import sys; print("%d.%d" % (sys.version_info.major, sys.version_info.minor))')"
+echo "使用 $PYTHON ($PYVER)"
 
 # --- 1. Clone ----------------------------------------------------------
 if [ -d "$INSTALL_DIR" ]; then
@@ -40,7 +53,14 @@ fi
 # --- 2. Python venv ----------------------------------------------------
 echo "[2/8] 创建虚拟环境..."
 cd "$INSTALL_DIR"
-python3 -m venv "$VENV" 2>/dev/null || python3 -m venv "$VENV" --without-pip
+if [ -x "$VENV/bin/python" ]; then
+    VPY="$("$VENV/bin/python" -c 'import sys; print("%d.%d" % (sys.version_info.major, sys.version_info.minor))' 2>/dev/null || true)"
+    if [ "$VPY" != "$PYVER" ]; then
+        echo "  现有 .venv 为 Python $VPY，按 $PYVER 重建"
+        rm -rf "$VENV"
+    fi
+fi
+"$PYTHON" -m venv "$VENV" 2>/dev/null || "$PYTHON" -m venv "$VENV" --without-pip
 
 # --- 3. Install --------------------------------------------------------
 echo "[3/8] 安装依赖 (api/scheduler/ml/trading/backtest)..."
@@ -60,6 +80,8 @@ mkdir -p "$DATA_DIR"/{logs,factors,models,ic_analysis}
 # --- 6. 全局命令 -------------------------------------------------------
 echo "[6/8] 注册全局命令 nous..."
 mkdir -p "$BIN_DIR"
+# If ~/bin/nous is a symlink into .venv, `cat >` would clobber the real CLI.
+rm -f "$BIN_DIR/nous"
 cat > "$BIN_DIR/nous" <<EOF
 #!/bin/bash
 export NOUS_CONFIG_DIR="$INSTALL_DIR/config"
