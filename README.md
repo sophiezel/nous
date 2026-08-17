@@ -4,16 +4,13 @@
 
 ## 快速开始（一键安装，无需 activate）
 
-前提：已安装并登录 [GitHub CLI](https://cli.github.com/)（`gh auth login`）。  
-仓库是 private，且国内常连不上 `raw.githubusercontent.com`，所以**不要**用 `curl .../raw.githubusercontent.com/... | bash`。
-
-一键安装（经 `api.github.com` 鉴权拉脚本，等价于 curl|bash）：
+公开仓库，HTTPS clone 即可，不必登录 GitHub CLI。
 
 ```bash
-bash <(gh api -H "Accept: application/vnd.github.v3.raw" "/repos/sophiezel/nous/contents/install.sh?ref=main")
+git clone https://github.com/sophiezel/nous.git ~/code/nous && cd ~/code/nous && bash install.sh
 ```
 
-备选（先克隆再装）：
+国内若 `github.com` 不稳定，可先装 [GitHub CLI](https://cli.github.com/) 再：
 
 ```bash
 gh repo clone sophiezel/nous ~/code/nous && cd ~/code/nous && bash install.sh

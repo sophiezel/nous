@@ -4,9 +4,9 @@
 # 角色: guest | member | vip | admin | super_admin (默认 guest)
 # 有效期: 默认24小时
 
-ECS_HOST="user@your-server"
+: "${ECS_HOST:?Set ECS_HOST to user@host}"
 ECS_DB="/opt/dashboard/data/screener.db"
-SSH_KEY="$HOME/.ssh/id_ed25519"
+SSH_KEY="${ECS_SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
 ROLE="${1:-guest}"
 TTL_HOURS="${2:-24}"

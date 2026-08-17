@@ -2,8 +2,9 @@
 # SSH tunnel keepalive — persistent Mac:3099 → ECS:3000
 # Managed by launchd: ~/Library/LaunchAgents/com.hermes.ssh-tunnel.plist
 
-SSH_KEY="$HOME/.ssh/id_ed25519"
-REMOTE="user@your-server"
+: "${ECS_HOST:?Set ECS_HOST to user@host}"
+SSH_KEY="${ECS_SSH_KEY:-$HOME/.ssh/id_ed25519}"
+REMOTE="$ECS_HOST"
 LOCAL_PORT=3099
 REMOTE_PORT=3000
 HEALTH_URL="http://127.0.0.1:${LOCAL_PORT}/login"

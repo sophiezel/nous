@@ -3,8 +3,9 @@
 # Cron: 0 3 * * 0 (Sunday 3am)
 
 set -e
-SSH_KEY="$HOME/.ssh/id_ed25519"
-ECS="user@your-server"
+: "${ECS_HOST:?Set ECS_HOST to user@host}"
+SSH_KEY="${ECS_SSH_KEY:-$HOME/.ssh/id_ed25519}"
+ECS="$ECS_HOST"
 LOG="/tmp/weekly-sync.log"
 
 echo "[$(date)] === weekly full sync ===" | tee "$LOG"

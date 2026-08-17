@@ -18,7 +18,7 @@ Nous 是整个量化投研体系的"拱顶石"——一个独立于 Hermes Agent
 - 脱离 Hermes Agent 依赖（cron调度/skill/LLM编排/配置管理）
 - 统一项目结构、依赖管理、配置和日志
 - 保持现有数据资产（screener.db / reports.db）完全兼容
-- 可独立部署到 ECS（YOUR_SERVER）运行
+- 可独立部署到自有服务器运行
 
 ---
 

@@ -12,10 +12,11 @@ set -e
 
 SOURCE_DB="$HOME/code/stock-screener/data/screener.db"
 REPORTS_DB="$HOME/code/dashboard/data/reports.db"
-DEST_HOST="user@your-server"
+: "${ECS_HOST:?Set ECS_HOST to user@host}"
+DEST_HOST="$ECS_HOST"
 DEST_DB="/opt/dashboard/data/screener.db"
 DEST_REPORTS="/opt/dashboard/data/reports.db"
-SSH_KEY="$HOME/.ssh/id_ed25519"
+SSH_KEY="${ECS_SSH_KEY:-$HOME/.ssh/id_ed25519}"
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -o ServerAliveInterval=30"
 LOCKFILE="/tmp/dashboard-sync-v2.lock"
 LOG_TAG="[sync-v2]"

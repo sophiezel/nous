@@ -48,8 +48,8 @@ trading:
   atr_multiplier: 2.0         # ATR 止损倍数
 
 dashboard:
-  ecs_host: "YOUR_SERVER"
-  ecs_user: "root"
+  ecs_host: ""          # set via ECS_HOST env, never commit a real host
+  ecs_user: ""
   deploy_path: "/opt/nous"
 
 logging:

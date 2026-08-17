@@ -490,8 +490,11 @@ def fetch_2025eyp_articles() -> list[dict]:
     """从 2025eyp 拉取宏观分析文章"""
     articles = []
     try:
+        eyp_base = os.environ.get("EYP_API_BASE", "").rstrip("/")
+        if not eyp_base:
+            return articles
         resp = SESSION.get(
-            "http://127.0.0.1/v1/articles/new",
+            f"{eyp_base}/v1/articles/new",
             params={"page": 1, "count": 10, "columnId": 2},  # 宏观分析专栏
             headers={
                 "Authorization": "Bearer ",

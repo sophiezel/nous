@@ -9,7 +9,7 @@ import os
 import hashlib
 from datetime import datetime
 
-BASE = "http://127.0.0.1"
+BASE = os.environ.get("EYP_API_BASE", "").rstrip("/")
 WIKI_DATA = os.path.expanduser("~/wiki/finance/raw/data/eyp")
 WIKI_ARTICLES = os.path.join(WIKI_DATA, "articles")
 ALL_JSON = os.path.join(WIKI_DATA, "all-articles.json")
@@ -69,6 +69,9 @@ def load_existing_ids():
 
 
 def main():
+    if not BASE:
+        print("Set EYP_API_BASE to enable 2025eyp sync; skipping.")
+        return 0
     print(f"[{datetime.now()}] 2025eyp 增量同步开始...")
     os.makedirs(WIKI_ARTICLES, exist_ok=True)
     

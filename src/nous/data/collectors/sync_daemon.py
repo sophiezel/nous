@@ -42,11 +42,8 @@ from nous.data.storage import get_db
 
 # ── 配置 ────────────────────────────────────────────
 
-# 本地测试 / 生产
+# Default local; production URL must come from SYNC_API_URL (do not hardcode hosts).
 LOCAL_API = "http://localhost:3456/api/data/sync"
-PROD_API = "http://127.0.0.1/api/data/sync"
-
-# 环境变量覆盖
 SYNC_API_URL = os.environ.get("SYNC_API_URL", LOCAL_API)
 SYNC_API_KEY = os.environ.get("SYNC_API_KEY", "")
 

@@ -2,7 +2,7 @@
 # Nous 一键安装脚本 — 装完直接用 nous，无需 source .venv
 set -e
 
-REPO="git@github.com:sophiezel/nous.git"
+REPO="https://github.com/sophiezel/nous.git"
 INSTALL_DIR="$HOME/code/nous"
 DATA_DIR="$HOME/nous-data"
 VENV="$INSTALL_DIR/.venv"
