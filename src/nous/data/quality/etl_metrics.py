@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 METRICS_JSON = Path.home() / "wiki" / "finance" / "raw" / "etl_metrics.json"
 
 
@@ -191,7 +193,9 @@ def get_etl_summary(days: int = 30) -> dict:
 
 def cleanup(keep_days: int = 90) -> dict:
     """Prune old etl_metrics rows (scheduler data-cleanup job)."""
-    path = Path.home() / "nous-data" / "screener.db"
+    from nous.core.paths import screener_db
+
+    path = screener_db()
     if not path.exists():
         path = Path(__file__).resolve().parents[4] / "data" / "screener.db"
     if not path.exists():

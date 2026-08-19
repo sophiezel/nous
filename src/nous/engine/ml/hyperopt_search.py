@@ -29,6 +29,7 @@ from datetime import date
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
+from nous.core.paths import data_dir
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ except ImportError:
 # 路径
 # ──────────────────────────────────────────────
 
-HYP_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "hyperopt"
+HYP_DIR = data_dir() / "hyperopt"
 HYP_DIR.mkdir(parents=True, exist_ok=True)
 
 

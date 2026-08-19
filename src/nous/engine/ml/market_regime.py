@@ -16,14 +16,15 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import joblib
+from nous.core.paths import model_dir, screener_db
 
 logger = logging.getLogger(__name__)
 
 # ── 路径 ──────────────────────────────────────────────────────────
 PROJ_ROOT = Path(__file__).resolve().parent.parent.parent
-DB_PATH = PROJ_ROOT / "data" / "screener.db"
-MODEL_DIR = PROJ_ROOT / "data" / "models"
-REGIME_DIR = PROJ_ROOT / "data" / "market_regime"
+DB_PATH = screener_db()
+MODEL_DIR = model_dir()
+REGIME_DIR = model_dir().parent / "market_regime"
 MODEL_PATH = MODEL_DIR / "regime_classifier.pkl"
 REPORT_PATH = REGIME_DIR / "accuracy_report.json"
 FEATURES_CSV = REGIME_DIR / "regime_training_data.csv"

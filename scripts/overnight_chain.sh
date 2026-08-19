@@ -2,7 +2,8 @@
 # Continue overnight steps; if 2014 backfill already running, wait for it.
 set -u
 ROOT="${NOUS_ROOT:-$HOME/code/nous}"
-LOG="$HOME/nous-data/logs"
+DATA="${NOUS_DATA_DIR:-$HOME/nous-data}"
+LOG="$DATA/logs"
 PY="$ROOT/.venv/bin/python"
 export PYTHONPATH="$ROOT/src"
 export PYTHONUNBUFFERED=1
@@ -15,16 +16,16 @@ wait_for_2014() {
   while true; do
     if pgrep -f "backfill_year_partition.py --year 2014" >/dev/null; then
       local done_n avg
-      done_n=$(python3 -c "import json,os; p=os.path.expanduser('~/nous-data/backfill_checkpoints/stock_daily_2014.json');
+      done_n=$(python3 -c "import json,os; p=os.path.join(os.path.expanduser('${DATA}'),'backfill_checkpoints/stock_daily_2014.json');
 import pathlib; 
 d=json.load(open(p)) if pathlib.Path(p).exists() else {'done':[]}; print(len(d.get('done',[])))" 2>/dev/null || echo 0)
-      avg=$(sqlite3 "$HOME/nous-data/screener.db" "SELECT ROUND(AVG(c),0) FROM (SELECT COUNT(*) c FROM stock_daily_2014 GROUP BY trade_date);" 2>/dev/null || echo 0)
+      avg=$(sqlite3 "$DATA/screener.db" "SELECT ROUND(AVG(c),0) FROM (SELECT COUNT(*) c FROM stock_daily_2014 GROUP BY trade_date);" 2>/dev/null || echo 0)
       log "waiting 2014 pid alive done=$done_n avg=$avg"
       sleep 60
       continue
     fi
     # not running — check gate or start
-    avg=$(sqlite3 "$HOME/nous-data/screener.db" "SELECT ROUND(AVG(c),0) FROM (SELECT COUNT(*) c FROM stock_daily_2014 GROUP BY trade_date);" 2>/dev/null || echo 0)
+    avg=$(sqlite3 "$DATA/screener.db" "SELECT ROUND(AVG(c),0) FROM (SELECT COUNT(*) c FROM stock_daily_2014 GROUP BY trade_date);" 2>/dev/null || echo 0)
     if python3 -c "import sys; sys.exit(0 if float('${avg:-0}' or 0) >= 1800 else 1)"; then
       log "2014 gate PASS avg=$avg"
       return 0

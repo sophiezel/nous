@@ -17,8 +17,8 @@ from nous.data.storage import get_db
 from typing import Optional
 
 PROCESS_NAME = "institution_tracker"
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
-
+from nous.core.paths import screener_db
+DB_PATH = screener_db()
 DDL = """
 CREATE TABLE IF NOT EXISTS institution_research (
     announce_date TEXT NOT NULL,

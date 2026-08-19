@@ -23,6 +23,17 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent  # nous repo
 VENV_PYTHON = str(PROJECT_ROOT / ".venv" / "bin" / "python3")
 
 
+def _archive_job_should_skip(job_name: str) -> bool:
+    """Skip archive jobs when backups/factors already live on a missing volume."""
+    try:
+        from nous.core.volume import archive_job_should_skip
+
+        return archive_job_should_skip(job_name)
+    except Exception as exc:
+        logger.warning("volume check failed for %s: %s", job_name, exc)
+        return False
+
+
 def _run_cmd(cmd: str, timeout: int = 300, workdir: str = ""):
     """Run a command via subprocess, log output."""
     cwd = workdir or str(PROJECT_ROOT)
@@ -124,6 +135,9 @@ def start():
         # Closure capture fix: use default args
         def make_runner(c=cmd, t=timeout, n=name):
             def runner():
+                if _archive_job_should_skip(n):
+                    logger.info("SKIP %s: archive volume not mounted", n)
+                    return
                 _run_cmd(c, timeout=t)
             return runner
 
@@ -154,6 +168,9 @@ def run_job(name: str):
     """Manually trigger a single job by name."""
     for jname, schedule, cmd, desc, timeout in JOBS:
         if jname == name:
+            if _archive_job_should_skip(name):
+                print(f"SKIP {name}: archive volume not mounted")
+                return
             print(f"Running: {name} — {desc}")
             _run_cmd(cmd, timeout=timeout)
             return

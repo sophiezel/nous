@@ -2,8 +2,9 @@
 # Watchdog: keep overnight history backfill alive until coverage gate or morning.
 set -u
 ROOT="${NOUS_ROOT:-$HOME/code/nous}"
-LOG="$HOME/nous-data/logs"
-CKPT="$HOME/nous-data/backfill_checkpoints/stock_daily_2014.json"
+DATA="${NOUS_DATA_DIR:-$HOME/nous-data}"
+LOG="$DATA/logs"
+CKPT="$DATA/backfill_checkpoints/stock_daily_2014.json"
 PY="$ROOT/.venv/bin/python"
 export PYTHONPATH="$ROOT/src"
 mkdir -p "$LOG"
@@ -34,7 +35,7 @@ while true; do
   if [[ -f "$CKPT" ]]; then
     done_n=$(python3 -c "import json;print(len(json.load(open('$CKPT')).get('done',[])))" 2>/dev/null || echo 0)
   fi
-  avg=$(sqlite3 "$HOME/nous-data/screener.db" "SELECT ROUND(AVG(c),0) FROM (SELECT COUNT(*) c FROM stock_daily_2014 GROUP BY trade_date);" 2>/dev/null || echo 0)
+  avg=$(sqlite3 "$DATA/screener.db" "SELECT ROUND(AVG(c),0) FROM (SELECT COUNT(*) c FROM stock_daily_2014 GROUP BY trade_date);" 2>/dev/null || echo 0)
   status "2014 progress done_ckpt=$done_n avg_per_day=$avg"
   # Gate: ~2000+ stocks/day typical for 2014
   if python3 -c "import sys; sys.exit(0 if float('${avg:-0}' or 0) >= 1800 else 1)"; then
@@ -52,7 +53,7 @@ import json,sqlite3
 from pathlib import Path
 ckpt=json.load(open("$CKPT")) if Path("$CKPT").exists() else {"done":[]}
 done=set(ckpt.get("done") or [])
-conn=sqlite3.connect(str(Path.home()/"nous-data"/"screener.db"))
+conn=sqlite3.connect("$DATA/screener.db")
 syms=[r[0] for r in conn.execute("SELECT symbol FROM stock_basic WHERE market='a' AND symbol NOT LIKE '8%' AND symbol NOT LIKE '4%' AND symbol NOT LIKE '920%'")]
 print(sum(1 for s in syms if s not in done))
 PY

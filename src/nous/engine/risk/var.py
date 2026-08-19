@@ -13,9 +13,9 @@ import pandas as pd
 from pathlib import Path
 import sqlite3
 
-DB = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
-
+DB = screener_db()
 # ---------------------------------------------------------------------------
 # 核心函数
 # ---------------------------------------------------------------------------

@@ -21,10 +21,11 @@ import math
 from pathlib import Path
 from datetime import date, datetime, timedelta
 from typing import Optional
+from nous.core.paths import repo_root
 
 # 项目路径
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]  # nous repo root))
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]  # nous repo root))
+sys.path.insert(0, str(repo_root()))
+sys.path.insert(0, str(repo_root()))
 
 LOG_DIR = Path.home() / "wiki" / "finance" / "reports" / "model_trades"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -78,7 +79,8 @@ def load_csi300_data(days: int = 120) -> list[dict]:
     """从 screener.db 加载沪深300日线"""
     try:
         import sqlite3
-        db_path = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+        from nous.core.paths import screener_db
+        db_path = screener_db()
         if not db_path.exists():
             print(f"  [benchmark] 数据库不存在: {db_path}", file=sys.stderr)
             return []

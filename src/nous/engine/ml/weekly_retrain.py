@@ -20,8 +20,9 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from nous.core.paths import data_dir, ic_dir, repo_root
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]  # nous repo root))
+sys.path.insert(0, str(repo_root()))
 
 logger = logging.getLogger(__name__)
 
@@ -94,8 +95,8 @@ def run_weekly_retraining(limit: int = 500, forward: int = 5):
     周度重训练完整管线。
     """
     today = date.today()
-    ic_dir = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "ic_analysis"
-    imp_dir = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factor_importance"
+    ic_out = ic_dir()
+    imp_dir = data_dir() / "factor_importance"
     imp_dir.mkdir(parents=True, exist_ok=True)
     
     logger.info(f"{'='*60}")
@@ -111,7 +112,8 @@ def run_weekly_retraining(limit: int = 500, forward: int = 5):
     # 如果指定 limit，选取成交额最大的 N 只
     if limit and limit > 0:
         import sqlite3
-        db_path = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+        from nous.core.paths import screener_db
+        db_path = screener_db()
         conn = sqlite3.connect(str(db_path))
         latest_full = conn.execute(
             "SELECT trade_date FROM stock_daily d JOIN stock_basic b ON d.symbol=b.symbol WHERE b.market='a' GROUP BY trade_date HAVING COUNT(*) > 1000 ORDER BY trade_date DESC LIMIT 1"
@@ -146,7 +148,7 @@ def run_weekly_retraining(limit: int = 500, forward: int = 5):
     
     # 3. IC 对比
     logger.info("Step 3/5: IC 对比分析...")
-    prev_ic_files = sorted(ic_dir.glob("ic_*.json"))
+    prev_ic_files = sorted(ic_out.glob("ic_*.json"))
     prev_ic = prev_ic_files[-2] if len(prev_ic_files) >= 2 else None  # 上一次
     ic_comparison = compare_ic(current_ic, prev_ic)
     logger.info(f"  {ic_comparison}")
@@ -161,9 +163,9 @@ def run_weekly_retraining(limit: int = 500, forward: int = 5):
         shap_report = None
     
     # 因子重要性对比
-    shap_csv = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "shap_analysis" / "shap_importance.csv"
+    shap_csv = data_dir() / "shap_analysis" / "shap_importance.csv"
     if not shap_csv.exists():
-        shap_csv = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "shap" / "shap_importance.csv"
+        shap_csv = data_dir() / "shap" / "shap_importance.csv"
     
     cur_imp = None
     if shap_csv.exists():
@@ -210,7 +212,7 @@ def run_weekly_retraining(limit: int = 500, forward: int = 5):
         "snapshot_path": str(snapshot_path),
     }
     
-    report_path = ic_dir / f"weekly_report_{today.isoformat()}.json"
+    report_path = ic_out / f"weekly_report_{today.isoformat()}.json"
     with open(report_path, "w") as f:
         json.dump(report, f, indent=2, ensure_ascii=False, default=str)
     

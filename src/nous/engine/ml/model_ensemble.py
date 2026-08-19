@@ -30,7 +30,7 @@ from scipy.stats import spearmanr
 logger = logging.getLogger(__name__)
 
 # ── 超参加载 ──
-HYP_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "hyperopt"
+HYP_DIR = data_dir() / "hyperopt"
 
 def _load_optimized_params(model_name: str) -> dict | None:
     """加载 Optuna 搜索到的最优参数 (如有).
@@ -56,7 +56,7 @@ def _load_optimized_params(model_name: str) -> dict | None:
         logger.warning(f"  解析 {latest} 失败: {e}")
     return None
 
-from nous.core.paths import factor_dir, model_dir, screener_db
+from nous.core.paths import data_dir, factor_dir, model_dir, screener_db
 
 FACTOR_DIR = factor_dir()
 MODEL_DIR = model_dir()

@@ -17,9 +17,11 @@ from scipy.stats import spearmanr
 
 logger = logging.getLogger(__name__)
 
-FACTOR_DIR = Path.home() / "nous-data" / "factors"
-MODEL_DIR = Path.home() / "nous-data" / "models"
-IC_DIR = Path.home() / "nous-data" / "ic_analysis"
+from nous.core.paths import factor_dir, ic_dir, model_dir
+
+FACTOR_DIR = factor_dir()
+MODEL_DIR = model_dir()
+IC_DIR = ic_dir()
 
 
 def load_factors(market: str = "a") -> pd.DataFrame:

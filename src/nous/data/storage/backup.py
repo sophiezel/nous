@@ -7,8 +7,10 @@ from pathlib import Path
 
 
 def _db_path() -> Path:
-    p = Path.home() / "nous-data" / "screener.db"
-    if p.exists():
+    from nous.core.paths import screener_db
+
+    p = screener_db()
+    if p.exists() or p.is_symlink():
         return p
     return Path(__file__).resolve().parents[4] / "data" / "screener.db"
 

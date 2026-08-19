@@ -19,10 +19,10 @@ import sqlite3
 
 logger = logging.getLogger(__name__)
 
-EVAL_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "evaluation"
-IC_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "ic_analysis"
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
-
+EVAL_DIR = data_dir() / "evaluation"
+IC_DIR = ic_dir()
+from nous.core.paths import data_dir, ic_dir, screener_db
+DB_PATH = screener_db()
 # 衰退阈值
 THRESHOLDS = {
     "rank_ic_floor": 0.02,          # Rank IC下限,连续N日低于此触发

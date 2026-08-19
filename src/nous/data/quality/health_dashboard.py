@@ -16,7 +16,9 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 DASHBOARD_PATH = Path.home() / "wiki" / "finance" / "raw" / "data_health.json"
 
 

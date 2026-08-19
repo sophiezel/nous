@@ -19,7 +19,9 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 if not DB_PATH.exists():
     _alt = Path(__file__).resolve().parents[4] / "data" / "screener.db"
     if _alt.exists():

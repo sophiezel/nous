@@ -36,6 +36,22 @@ def model_dir() -> Path:
     return data_dir() / "models"
 
 
+def log_dir() -> Path:
+    return data_dir() / "logs"
+
+
+def ic_dir() -> Path:
+    return data_dir() / "ic_analysis"
+
+
+def checkpoint_dir() -> Path:
+    return data_dir() / "backfill_checkpoints"
+
+
+def backups_dir() -> Path:
+    return data_dir() / "backups"
+
+
 def repo_root() -> Path:
     """Editable-install repo root, else ~/code/nous if present."""
     here = Path(__file__).resolve()

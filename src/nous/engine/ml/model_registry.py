@@ -22,8 +22,9 @@ from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
+DB_PATH = screener_db()
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS model_registry (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

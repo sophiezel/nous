@@ -40,7 +40,8 @@ sys.path.insert(0, os.path.expanduser("~/code/dashboard/scripts"))
 # ── 常量 ──────────────────────────────────────────────────────────────
 
 OUTPUT_DIR = Path.home() / "wiki" / "finance" / "raw" / "sentiment"
-SCREENER_DB = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
+SCREENER_DB = screener_db()
 BOARD_LOOKBACK_DAYS = 10  # 连板查询回溯天数（含当日）
 
 # 涨跌幅限制百分比的 epsilon 容忍度（受四舍五入和精度影响）

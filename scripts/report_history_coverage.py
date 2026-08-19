@@ -12,7 +12,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-DB = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB = screener_db()
 
 
 def year_stats(conn: sqlite3.Connection, table: str) -> dict:

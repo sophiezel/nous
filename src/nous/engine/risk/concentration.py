@@ -11,9 +11,9 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Any
 
-DB = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
-
+DB = screener_db()
 # ===================================================================
 # 行业集中度
 # ===================================================================

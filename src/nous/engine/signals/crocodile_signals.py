@@ -17,12 +17,13 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
+from nous.core.paths import screener_db
 
 # 确保项目根目录在Python路径中
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-DB = PROJECT_ROOT / "data" / "screener.db"
+DB = screener_db()
 
 
 def _pct_change(db_conn, symbol: str, trade_date: str, days: int = 5) -> Optional[float]:

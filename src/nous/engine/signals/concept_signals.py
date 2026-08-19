@@ -8,9 +8,9 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 
-DB = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
-
+DB = screener_db()
 def get_concept_performance(db_conn, trade_date: str, days: int = 5) -> list:
     """计算各概念板块最近N天的涨幅"""
     dt = datetime.strptime(trade_date, '%Y-%m-%d')

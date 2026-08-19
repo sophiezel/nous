@@ -11,7 +11,9 @@ from datetime import date
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 log = logging.getLogger("backfill")
 
-DB = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB = screener_db()
 
 def backfill_stock_daily(
     start: str = "20200101",

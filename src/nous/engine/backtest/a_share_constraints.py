@@ -16,9 +16,9 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, timedelta
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
-
+DB_PATH = screener_db()
 # ── 板块涨跌停阈值 ───────────────────────────────────
 
 

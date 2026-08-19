@@ -32,7 +32,9 @@ from nous.data.quality.trading_calendar import (
     trading_day_lag,
 )
 
-DB_PATH = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 REPORT_ROOT = Path(__file__).resolve().parents[4] / "docs" / "data" / "freshness"
 
 

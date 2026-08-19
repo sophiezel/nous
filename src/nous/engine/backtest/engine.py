@@ -951,7 +951,9 @@ class BacktestEngine:
         if self._factor_df is not None:
             return self._factor_df
         
-        factor_dir = Path.home() / "nous-data" / "factors"
+        from nous.core.paths import factor_dir as _factor_dir
+
+        factor_dir = _factor_dir()
         if not factor_dir.exists():
             factor_dir = Path(__file__).resolve().parents[4] / "data" / "factors"
         

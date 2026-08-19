@@ -1,0 +1,29 @@
+# Copy to ~/.config/nous/storage.toml and fill in `diskutil info` Volume UUIDs.
+# Do not hardcode mount paths as the source of truth.
+
+working_dir = "~/nous-data"
+
+[volumes.archive]
+role = "archive"
+name = "DB"
+uuid = "REPLACE-WITH-VOLUME-UUID"
+prefix = "nous-data"
+
+[volumes.disaster]
+role = "disaster"
+name = "KINGSTON"
+uuid = "REPLACE-WITH-VOLUME-UUID"
+prefix = "nous-data"
+
+[archive]
+dirs = ["backups", "factors"]
+
+[jobs]
+require_archive = [
+    "db-backup",
+    "weekly-train",
+    "factor-full-recompute",
+    "monthly-archive",
+    "factor-freshness",
+    "daily-recommend",
+]

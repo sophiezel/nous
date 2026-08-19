@@ -13,9 +13,12 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+from nous.core.paths import log_dir
+
 PY = sys.executable
 ENV = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
-LOG = Path.home() / "nous-data" / "logs"
+LOG = log_dir()
 LOG.mkdir(parents=True, exist_ok=True)
 
 

@@ -24,11 +24,12 @@ import os
 
 import numpy as np
 
-# ── 修正导入路径 ──────────────────────────────────────
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."  # to nous repo root))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
-
+from nous.core.paths import repo_root
 from nous.data.storage import get_daily_range, get_db  # noqa: E402
+
+# ── 修正导入路径 ──────────────────────────────────────
+sys.path.insert(0, str(repo_root()))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 # ============================================================

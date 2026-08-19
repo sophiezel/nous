@@ -10,6 +10,7 @@ Usage:
     nous trade check         持仓检查
     nous model status        模型健康
     nous cron list|run       调度器
+    nous storage status|check|eject|backup-kingston|migrate-archive
     nous serve               启动API
 """
 
@@ -788,6 +789,47 @@ def serve(
         uvicorn.run("nous.api.main:app", host=host, port=port, log_level="info")
     except ImportError:
         console.print("[red]uvicorn 未安装. pip install uvicorn[/red]")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Storage volumes
+# ═══════════════════════════════════════════════════════════════════════
+
+@app.command("storage")
+def storage_cmd(
+    action: str = typer.Argument(
+        "status",
+        help="status|ready|check|eject|backup-kingston|migrate-archive",
+    ),
+    job_name: str = typer.Option("", "--job", "-j", help="check 用的 job 名"),
+    yes: bool = typer.Option(False, "--yes", help="确认卸载/迁移/写入 KINGSTON"),
+):
+    """归档盘 / 灾备盘：按卷 UUID 识别，不硬编码挂载路径."""
+    from nous.core import volume
+
+    if action == "status":
+        console.print(Panel.fit("[bold cyan]Nous Storage[/bold cyan]", border_style="cyan"))
+        console.print(volume.format_status())
+        return
+    if action == "ready":
+        ok = volume.archive_ready()
+        console.print("archive: mounted" if ok else "archive: absent")
+        raise typer.Exit(0 if ok else 1)
+    if action == "check":
+        if not job_name:
+            console.print("[red]需要 -j JOB_NAME[/red]")
+            raise typer.Exit(1)
+        code = volume.main(["check", job_name])
+        raise typer.Exit(code)
+    if action == "eject":
+        raise typer.Exit(volume.safe_eject(yes=yes))
+    if action == "backup-kingston":
+        raise typer.Exit(volume.backup_disaster(yes=yes))
+    if action == "migrate-archive":
+        raise typer.Exit(volume.migrate_archive(yes=yes))
+    console.print(
+        f"[yellow]未知操作: {action}. 可用: status, ready, check, eject, backup-kingston, migrate-archive[/yellow]"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════

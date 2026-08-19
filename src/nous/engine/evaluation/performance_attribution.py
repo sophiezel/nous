@@ -18,10 +18,9 @@ import sqlite3
 
 logger = logging.getLogger(__name__)
 
-EVAL_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "evaluation"
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
-
-
+EVAL_DIR = data_dir() / "evaluation"
+from nous.core.paths import data_dir, screener_db
+DB_PATH = screener_db()
 def compute_performance_metrics(
     daily_pnl: list[dict],
     trades: list[dict],

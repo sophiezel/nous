@@ -59,11 +59,15 @@ def _home() -> Path:
 
 
 def factor_dir() -> Path:
-    return _home() / "nous-data" / "factors"
+    from nous.core.paths import factor_dir as _factor_dir
+
+    return _factor_dir()
 
 
 def model_dir() -> Path:
-    return _home() / "nous-data" / "models"
+    from nous.core.paths import model_dir as _model_dir
+
+    return _model_dir()
 
 
 # ── Canonical SLA list ──────────────────────────────────────────────────
@@ -415,4 +419,11 @@ def asset_by_key(key: str) -> AssetSLA | None:
 
 
 def expand_path(p: str) -> Path:
-    return Path(p.replace("~", str(_home()))).expanduser()
+    from nous.core.paths import data_dir
+
+    text = p.replace("{home}", str(Path.home()))
+    prefix = "~/nous-data"
+    if text.startswith(prefix):
+        rel = text[len(prefix):].lstrip("/")
+        return data_dir() / rel if rel else data_dir()
+    return Path(text.replace("~", str(Path.home()))).expanduser()

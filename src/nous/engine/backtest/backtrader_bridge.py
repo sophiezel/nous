@@ -16,9 +16,9 @@ from nous.engine.backtest.survivorship import (
     filter_symbols_in_date_range,
 )
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
-
+DB_PATH = screener_db()
 def get_backtrader_data(
     symbols: Optional[list] = None,
     start: str = None,

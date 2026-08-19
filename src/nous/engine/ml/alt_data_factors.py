@@ -18,12 +18,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from nous.core.paths import repo_root, screener_db
 
 logger = logging.getLogger(__name__)
 
 # 项目路径
-PROJECT_ROOT = Path(__file__).resolve().parents[4]  # nous repo root
-DB_PATH = PROJECT_ROOT / "data" / "screener.db"
+PROJECT_ROOT = repo_root()
+DB_PATH = screener_db()
 
 def _query_northbound_db(date_str: str = None, days: int = 3) -> float:
     """从hsgt_daily读取推算北向净买额(亿元), 返回days日累计"""

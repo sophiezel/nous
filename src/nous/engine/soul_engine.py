@@ -22,9 +22,9 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+from nous.core.paths import screener_db
 
-
+DB_PATH = screener_db()
 # ═══════════════════════════════════════════════════════
 # L1: 板块通道分配
 # ═══════════════════════════════════════════════════════

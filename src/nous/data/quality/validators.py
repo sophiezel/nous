@@ -18,7 +18,9 @@ import json
 from pathlib import Path
 from collections import defaultdict
 
-DB_PATH = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 ANOMALY_LOG = Path.home() / ".hermes" / "logs" / "anomalies.jsonl"
 
 # Fallback if home data missing (dev checkout)

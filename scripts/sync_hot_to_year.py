@@ -12,7 +12,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from nous.data.storage.daily_bars import ensure_stock_daily_all_view  # noqa: E402
 
-DB = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB = screener_db()
 
 
 def main() -> int:

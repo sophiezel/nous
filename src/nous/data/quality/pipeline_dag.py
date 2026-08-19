@@ -27,7 +27,9 @@ from typing import Any, Optional
 
 logger = logging.getLogger("nous.pipeline_dag")
 
-STATUS_PATH = Path.home() / "nous-data" / "logs" / "chain_status.json"
+from nous.core.paths import log_dir
+
+STATUS_PATH = log_dir() / "chain_status.json"
 REPORT_ROOT = Path(__file__).resolve().parents[4] / "docs" / "data" / "freshness"
 
 

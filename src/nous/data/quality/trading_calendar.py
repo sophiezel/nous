@@ -14,6 +14,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+from nous.core.paths import screener_db
+
 MARKET_CLOSE = {
     "a": time(15, 0),
     "hk": time(16, 10),
@@ -46,7 +48,7 @@ def _load_from_db(db_path: Optional[Path] = None) -> list[str]:
     try:
         import sqlite3
 
-        path = db_path or (Path.home() / "nous-data" / "screener.db")
+        path = db_path or screener_db()
         if not path.exists():
             return []
         conn = sqlite3.connect(str(path))

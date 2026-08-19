@@ -18,10 +18,12 @@ import sqlite3
 from pathlib import Path
 from datetime import date, timedelta
 
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
-ANALYTICS_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "analytics.db"
-COLD_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "cold"
-VIEWS_SQL = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "analytics_views.sql"
+from nous.core.paths import data_dir, screener_db
+
+DB_PATH = screener_db()
+ANALYTICS_PATH = data_dir() / "analytics.db"
+COLD_PATH = data_dir() / "cold"
+VIEWS_SQL = data_dir() / "analytics_views.sql"
 
 
 def init_analytics():

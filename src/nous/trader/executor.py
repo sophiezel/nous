@@ -24,6 +24,7 @@ from .portfolio import Portfolio, Position
 from .order import Order, OrderBook, OrderSide, OrderType, OrderStatus, OrderReason
 from .risk import RiskEngine, CheckResult, full_pre_trade_check, estimate_slippage
 from .state_mgr import StateManager
+from nous.core.paths import repo_root
 
 # 卖出纪律（可选模块，加载失败静默跳过）
 try:
@@ -368,7 +369,7 @@ class Executor:
             return self._model_context
 
         try:
-            sys.path.insert(0, str(Path(__file__).resolve().parents[4]  # nous repo root))
+            sys.path.insert(0, str(repo_root()))
             from src.qlib_research.predict import get_model_recommendations
             from src.qlib_research.market_regime import predict_current_regime
 
@@ -538,7 +539,7 @@ class Executor:
         
         # Soul L4+L5: 琼斯趋势过滤 + 仓位上限
         try:
-            _screener_src = str(Path(__file__).resolve().parents[4]  # nous repo root / "src")
+            _screener_src = str(repo_root() / "src")
             if _screener_src not in sys.path:
                 sys.path.insert(0, _screener_src)
             from soul_engine import jones_trend_filter, calc_position_weight, assign_channel

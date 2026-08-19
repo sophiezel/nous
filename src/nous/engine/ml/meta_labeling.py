@@ -25,10 +25,11 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 import joblib
+from nous.core.paths import model_dir
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "models"
+MODEL_DIR = model_dir()
 
 
 class TripleBarrier:

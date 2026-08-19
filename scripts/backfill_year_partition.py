@@ -47,6 +47,7 @@ from nous.data.collectors import (  # noqa: E402
 )
 from nous.data.collectors.rate_limiter import acquire_with_multiplier  # noqa: E402
 from nous.data.storage.daily_bars import daily_table_for  # noqa: E402
+from nous.core.paths import checkpoint_dir, screener_db  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,8 +56,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("backfill_year")
 
-DB = Path.home() / "nous-data" / "screener.db"
-CKPT_DIR = Path.home() / "nous-data" / "backfill_checkpoints"
+DB = screener_db()
+CKPT_DIR = checkpoint_dir()
 COLUMNS = ["symbol", "trade_date", "open", "high", "low", "close", "volume", "amount"]
 
 # §4.3 defaults

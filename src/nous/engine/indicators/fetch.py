@@ -300,7 +300,8 @@ def _register_all():
         return fin.get("eps") if fin else None
 
     def _db_stock_basic(symbol, market, ctx):
-        db_path = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+        from nous.core.paths import screener_db
+        db_path = screener_db()
         if not db_path.exists():
             return None
         conn = sqlite3.connect(str(db_path))
@@ -316,7 +317,8 @@ def _register_all():
         if close is None or eps is None:
             return None
         # 需要净利润和总股本...简化：从 stock_fundamental 取
-        db_path = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+        from nous.core.paths import screener_db
+        db_path = screener_db()
         if db_path.exists():
             conn = sqlite3.connect(str(db_path))
             row = conn.execute(

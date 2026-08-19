@@ -20,11 +20,12 @@ import pandas as pd
 from gplearn.genetic import SymbolicRegressor
 from gplearn.functions import _Function, make_function
 from scipy.stats import spearmanr
+from nous.core.paths import repo_root, screener_db
 
 logger = logging.getLogger(__name__)
 
 # 项目路径
-PROJECT_ROOT = Path(__file__).resolve().parents[4]  # nous repo root
+PROJECT_ROOT = repo_root()
 DISCOVERED_DIR = PROJECT_ROOT / "data" / "factors" / "discovered"
 
 # ---------------------------------------------------------------------------
@@ -443,7 +444,7 @@ def mine_and_save(
     import sqlite3
 
     # 加载日线数据
-    db_path = PROJECT_ROOT / "data" / "screener.db"
+    db_path = screener_db()
     conn = sqlite3.connect(str(db_path))
 
     where_clauses = [f"b.market = 'a'"]

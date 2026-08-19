@@ -32,7 +32,8 @@ def _get_daily(symbol: str, days: int = 30) -> list[dict]:
     """从 screener.db 获取最近N天日线"""
     import sqlite3
     from pathlib import Path
-    db = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
+    from nous.core.paths import screener_db
+    db = screener_db()
     if not db.exists():
         return []
     conn = sqlite3.connect(str(db))

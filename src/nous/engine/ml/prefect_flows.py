@@ -18,8 +18,9 @@ import sys
 from pathlib import Path
 from datetime import date
 from prefect import flow, task
+from nous.core.paths import repo_root
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]  # nous repo root))
+sys.path.insert(0, str(repo_root()))
 
 
 @task(retries=2, retry_delay_seconds=30, log_prints=True)

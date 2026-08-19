@@ -13,7 +13,9 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path.home() / "nous-data" / "screener.db"
+from nous.core.paths import screener_db
+
+DB_PATH = screener_db()
 
 
 def _conn() -> sqlite3.Connection:

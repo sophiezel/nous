@@ -28,9 +28,8 @@ from pathlib import Path
 from typing import Optional
 
 # ── 路径 ──────────────────────────────────────────────
-DB_PATH = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "screener.db"
-
-
+from nous.core.paths import screener_db
+DB_PATH = screener_db()
 # ── 数据结构 ──────────────────────────────────────────
 
 @dataclass

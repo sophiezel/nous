@@ -6,6 +6,7 @@ from datetime import date
 from nous.data import storage
 from nous.engine.indicators import trend, value, volume
 from nous.data.query_engine import get_multi_daily_df
+from nous.core.paths import factor_dir
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +223,7 @@ def screen_all(market: str = "a", cfg: dict = None, save: bool = False) -> list[
             from nous.engine.ml.factor_compute import compute_all_factors, save_factor_snapshot
 
             # 尝试从最新因子快照加载，如果没有则计算
-            factor_path = Path(__file__).resolve().parents[4]  # nous repo root / "data" / "factors" / "latest.parquet"
+            factor_path = factor_dir() / "latest.parquet"
             if factor_path.exists():
                 import pandas as pd
                 factors_df = pd.read_parquet(factor_path)
