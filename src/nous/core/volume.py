@@ -207,6 +207,11 @@ def archive_ready(cfg: dict[str, Any] | None = None) -> bool:
     return bool(volume_status("archive", cfg)["mounted"])
 
 
+def archive_volume_configured(cfg: dict[str, Any] | None = None) -> bool:
+    cfg = cfg if cfg is not None else load_config()
+    return _volume_block(cfg, "archive") is not None
+
+
 def archive_dirs_attached(cfg: dict[str, Any] | None = None) -> bool:
     """True after migrate: working copies of archive dirs are symlinks."""
     cfg = cfg if cfg is not None else load_config()
@@ -217,13 +222,57 @@ def archive_dirs_attached(cfg: dict[str, Any] | None = None) -> bool:
     return all((base / name).is_symlink() for name in names)
 
 
+def archive_dirs_reachable(cfg: dict[str, Any] | None = None) -> bool:
+    """True when each archive dir resolves to an existing directory (follows symlinks)."""
+    cfg = cfg if cfg is not None else load_config()
+    base = working_dir(cfg)
+    names = archive_dirs(cfg)
+    if not names:
+        return False
+    for name in names:
+        path = base / name
+        try:
+            if not path.is_dir():
+                return False
+        except OSError:
+            return False
+    return True
+
+
+def archive_available(cfg: dict[str, Any] | None = None) -> bool:
+    """Whether archive-backed jobs may run.
+
+    - UUID archive configured → volume must be mounted.
+    - No UUID (host SOR / retired nous volume table) → symlink targets must be reachable.
+    - Not yet migrated (local real dirs) → available.
+    """
+    cfg = cfg if cfg is not None else load_config()
+    if archive_volume_configured(cfg):
+        return archive_ready(cfg)
+    if archive_dirs_attached(cfg):
+        return archive_dirs_reachable(cfg)
+    return True
+
+
 def archive_job_should_skip(job_name: str, cfg: dict[str, Any] | None = None) -> bool:
     cfg = cfg if cfg is not None else load_config()
     if job_name not in require_archive_jobs(cfg):
         return False
     if not archive_dirs_attached(cfg):
         return False
-    return not archive_ready(cfg)
+    if archive_volume_configured(cfg):
+        return not archive_ready(cfg)
+    # No volume UUID in config: skip only when cold symlink targets are broken.
+    return not archive_dirs_reachable(cfg)
+
+
+def archive_skip_reason(job_name: str, cfg: dict[str, Any] | None = None) -> str:
+    cfg = cfg if cfg is not None else load_config()
+    if not archive_job_should_skip(job_name, cfg):
+        return ""
+    if archive_volume_configured(cfg):
+        return "archive volume not mounted"
+    return "archive symlink targets unreachable"
 
 
 def _rsync(src: Path, dest: Path) -> None:
@@ -364,11 +413,20 @@ def format_status(cfg: dict[str, Any] | None = None) -> str:
         f"config: {config_path()}",
         f"working_dir: {working_dir(cfg)}",
         f"archive_dirs_attached: {archive_dirs_attached(cfg)}",
+        f"archive_dirs_reachable: {archive_dirs_reachable(cfg)}",
+        f"archive_available: {archive_available(cfg)}",
     ]
     for role in ("archive", "disaster"):
         st = volume_status(role, cfg)
         if not st["configured"]:
-            lines.append(f"{role}: not configured")
+            if role == "archive" and archive_dirs_attached(cfg):
+                reach = "reachable" if archive_dirs_reachable(cfg) else "UNREACHABLE"
+                lines.append(
+                    f"{role}: not configured (host paths {reach}; "
+                    "volume UUID left to macmini-storage)"
+                )
+            else:
+                lines.append(f"{role}: not configured")
             continue
         state = "mounted" if st["mounted"] else "absent"
         lines.append(
@@ -402,10 +460,10 @@ def main(argv: list[str] | None = None) -> int:
         print(format_status())
         return 0
     if args.cmd == "ready":
-        return 0 if archive_ready() else 1
+        return 0 if archive_available() else 1
     if args.cmd == "check":
         if args.job and archive_job_should_skip(args.job):
-            print(f"SKIP {args.job}: archive volume not mounted")
+            print(f"SKIP {args.job}: {archive_skip_reason(args.job)}")
             return SKIP_EXIT
         return 0
     if args.cmd == "eject":

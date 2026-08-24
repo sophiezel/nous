@@ -812,8 +812,11 @@ def storage_cmd(
         console.print(volume.format_status())
         return
     if action == "ready":
-        ok = volume.archive_ready()
-        console.print("archive: mounted" if ok else "archive: absent")
+        ok = volume.archive_available()
+        if ok:
+            console.print("archive: available")
+        else:
+            console.print("archive: unavailable")
         raise typer.Exit(0 if ok else 1)
     if action == "check":
         if not job_name:

@@ -24,7 +24,7 @@ VENV_PYTHON = str(PROJECT_ROOT / ".venv" / "bin" / "python3")
 
 
 def _archive_job_should_skip(job_name: str) -> bool:
-    """Skip archive jobs when backups/factors already live on a missing volume."""
+    """Skip archive jobs when cold archive paths are unavailable."""
     try:
         from nous.core.volume import archive_job_should_skip
 
@@ -32,6 +32,15 @@ def _archive_job_should_skip(job_name: str) -> bool:
     except Exception as exc:
         logger.warning("volume check failed for %s: %s", job_name, exc)
         return False
+
+
+def _archive_skip_reason(job_name: str) -> str:
+    try:
+        from nous.core.volume import archive_skip_reason
+
+        return archive_skip_reason(job_name) or "archive unavailable"
+    except Exception:
+        return "archive unavailable"
 
 
 def _run_cmd(cmd: str, timeout: int = 300, workdir: str = ""):
@@ -136,7 +145,7 @@ def start():
         def make_runner(c=cmd, t=timeout, n=name):
             def runner():
                 if _archive_job_should_skip(n):
-                    logger.info("SKIP %s: archive volume not mounted", n)
+                    logger.info("SKIP %s: %s", n, _archive_skip_reason(n))
                     return
                 _run_cmd(c, timeout=t)
             return runner
@@ -169,7 +178,7 @@ def run_job(name: str):
     for jname, schedule, cmd, desc, timeout in JOBS:
         if jname == name:
             if _archive_job_should_skip(name):
-                print(f"SKIP {name}: archive volume not mounted")
+                print(f"SKIP {name}: {_archive_skip_reason(name)}")
                 return
             print(f"Running: {name} — {desc}")
             _run_cmd(cmd, timeout=timeout)
