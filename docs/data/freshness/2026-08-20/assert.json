@@ -1,0 +1,123 @@
+{
+  "as_of": "2026-08-20",
+  "last_trade_date": "2026-08-19",
+  "ok": true,
+  "p0_ok": true,
+  "p1_ok": true,
+  "consumer": "recommend",
+  "domain": "all",
+  "degraded": [
+    "models_lgb"
+  ],
+  "elapsed_s": 109.69,
+  "checks": [
+    {
+      "key": "stock_daily_a",
+      "label": "A股日线",
+      "domain": "micro",
+      "priority": "P0",
+      "ok": true,
+      "track": "freshness",
+      "detail": "最新=2026-08-20, 交易日滞后=0 (阈值≤1), 覆盖=100%/80%",
+      "latest": "2026-08-20",
+      "lag_trading_days": 0,
+      "soft_fail": false
+    },
+    {
+      "key": "stock_basic",
+      "label": "股票基础信息",
+      "domain": "micro",
+      "priority": "P0",
+      "ok": true,
+      "track": "existence",
+      "detail": "行数=6640",
+      "latest": null,
+      "lag_trading_days": null,
+      "soft_fail": false
+    },
+    {
+      "key": "stock_fundamental",
+      "label": "基本面快照",
+      "domain": "fundamental",
+      "priority": "P1",
+      "ok": true,
+      "track": "freshness",
+      "detail": "最新=2026-08-20, 交易日滞后=0 (阈值≤2)",
+      "latest": "2026-08-20",
+      "lag_trading_days": 0,
+      "soft_fail": false
+    },
+    {
+      "key": "index_daily",
+      "label": "指数日线",
+      "domain": "macro",
+      "priority": "P1",
+      "ok": true,
+      "track": "freshness",
+      "detail": "最新=2026-08-19, 交易日滞后=0 (阈值≤1)",
+      "latest": "2026-08-19",
+      "lag_trading_days": 0,
+      "soft_fail": false
+    },
+    {
+      "key": "hsgt_stock_daily",
+      "label": "沪深港通个股",
+      "domain": "capital",
+      "priority": "P1",
+      "ok": true,
+      "track": "freshness",
+      "detail": "最新=2026-08-19, 交易日滞后=0 (阈值≤3)",
+      "latest": "2026-08-19",
+      "lag_trading_days": 0,
+      "soft_fail": false
+    },
+    {
+      "key": "factors_latest",
+      "label": "A股因子 latest",
+      "domain": "factor",
+      "priority": "P0",
+      "ok": true,
+      "track": "freshness",
+      "detail": "latest.parquet 行数=9996763 (阈值≥500), as_of=2026-08-20, 交易日滞后=0, K列=60",
+      "latest": "2026-08-20",
+      "lag_trading_days": null,
+      "soft_fail": false
+    },
+    {
+      "key": "factors_snapshot",
+      "label": "A股因子 dated snapshot",
+      "domain": "factor",
+      "priority": "P0",
+      "ok": true,
+      "track": "freshness",
+      "detail": "2026-08-19.parquet 行数=9991457 (阈值≥500), K列=60",
+      "latest": "2026-08-19",
+      "lag_trading_days": null,
+      "soft_fail": false
+    },
+    {
+      "key": "models_lgb",
+      "label": "LightGBM 模型",
+      "domain": "model",
+      "priority": "P1",
+      "ok": false,
+      "track": "freshness",
+      "detail": "lgb_2026-07-17.pkl 年龄=34.6d (阈值≤14d), 共1个",
+      "latest": null,
+      "lag_trading_days": null,
+      "soft_fail": true
+    },
+    {
+      "key": "integrity_ohlcv",
+      "label": "日线完整性抽样",
+      "domain": "micro",
+      "priority": "P0",
+      "ok": true,
+      "track": "integrity",
+      "detail": "2026-08-19: 行=5307, 无效OHLC=0 (0.0%)",
+      "latest": "2026-08-19",
+      "lag_trading_days": null,
+      "soft_fail": false
+    }
+  ]
+}

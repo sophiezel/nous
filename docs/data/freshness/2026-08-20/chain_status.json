@@ -1,0 +1,136 @@
+{
+  "chain": "post-close",
+  "as_of": "2026-08-20",
+  "ok": false,
+  "elapsed_s": 2436.07,
+  "stopped_at": "S4",
+  "stages": [
+    {
+      "name": "S1",
+      "ok": true,
+      "message": "10/13 collectors ok",
+      "elapsed_s": 1849.2,
+      "details": {
+        "batch": {
+          "ok": true,
+          "message": "10/13 collectors ok",
+          "elapsed_s": 1751.96,
+          "details": {
+            "daily": "ok",
+            "fundamental": "ok",
+            "index": "ok",
+            "global-index": "ok",
+            "margin": "ok",
+            "hsgt": "ok",
+            "lhb": "error",
+            "fund-flow": "error",
+            "etf-flow": "error",
+            "futures": "ok",
+            "sentiment": "ok",
+            "block-trade": "ok",
+            "futures-basis": "ok"
+          }
+        },
+        "cross": {
+          "ok": false,
+          "message": "cross-validate done",
+          "elapsed_s": 97.15,
+          "result": {
+            "ok": false,
+            "date": "2026-08-20",
+            "checked": 50,
+            "errors": [
+              {
+                "symbol": "300308",
+                "reason": "收盘价差异13.7%"
+              },
+              {
+                "symbol": "688256",
+                "reason": "收盘价差异18.0%"
+              },
+              {
+                "symbol": "300394",
+                "reason": "收盘价差异26.2%"
+              },
+              {
+                "symbol": "300502",
+                "reason": "收盘价差异31.3%"
+              },
+              {
+                "symbol": "300759",
+                "reason": "收盘价差异36.2%"
+              },
+              {
+                "symbol": "601138",
+                "reason": "收盘价差异6.8%"
+              }
+            ],
+            "warnings": [
+              {
+                "symbol": "000725",
+                "reason": "差异3.5%"
+              }
+            ]
+          }
+        },
+        "gap": {
+          "ok": true,
+          "message": "gap-detector done",
+          "elapsed_s": 0.09
+        }
+      }
+    },
+    {
+      "name": "S2",
+      "ok": true,
+      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-08-20.parquet",
+      "elapsed_s": 474.95,
+      "details": {
+        "elapsed_s": 474.95
+      }
+    },
+    {
+      "name": "S3",
+      "ok": true,
+      "message": "P0=ok P1=ok",
+      "elapsed_s": 110.48,
+      "details": {
+        "p0_ok": true,
+        "p1_ok": true,
+        "degraded": [
+          "models_lgb"
+        ],
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-08-20/FRESHNESS_REPORT.md",
+        "failed": [
+          {
+            "key": "models_lgb",
+            "priority": "P1",
+            "detail": "lgb_2026-07-17.pkl 年龄=34.6d (阈值≤14d), 共1个"
+          }
+        ]
+      }
+    },
+    {
+      "name": "S4",
+      "ok": false,
+      "message": "recommend=fail; review=ok",
+      "elapsed_s": 1.44,
+      "details": {
+        "recommend": {
+          "ok": false,
+          "message": "skipped",
+          "elapsed_s": 0.49,
+          "result": {
+            "status": "skipped"
+          }
+        },
+        "review": {
+          "ok": true,
+          "message": "review 2026-08-20 score=63.0",
+          "elapsed_s": 0.95,
+          "verdict": "信号一般，谨慎参与"
+        }
+      }
+    }
+  ]
+}
