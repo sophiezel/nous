@@ -534,7 +534,7 @@ class ReboundEngine:
                 prev5_low = min(b["low"] for b in bars[-6:-1]) if len(bars) >= 6 else closes[-1]
                 f["stabilize"] = 1.0 if closes[-1] > prev5_low else 0.0
                 # 融资余额 5 日变化率（资金面: 杠杆资金是否在进场）
-                f["margin_chg5"] = self._margin_chg5(symbol, bars[-1]["date"])
+                f["margin_chg5"] = self._margin_chg5(sym, bars[-1]["date"])
                 # 反弹弹性（AlphaReversal 启发）: 近20日最大单日涨幅 / 最大单日跌幅绝对值
                 gains, losses = [], []
                 for i in range(1, min(21, len(closes))):
