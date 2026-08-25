@@ -195,6 +195,15 @@ class ReboundBacktest:
                 margin_by_symbol.setdefault(sym, ([], []))
                 margin_by_symbol[sym][0].append(td)
                 margin_by_symbol[sym][1].append(float(bal))
+
+            # 申万 PIT 行业分类
+            industry_pit: dict[str, tuple[list, list]] = {}
+            for sym, sd, code in conn.execute(
+                    "SELECT symbol, start_date, industry_code FROM industry_pit "
+                    "ORDER BY symbol, start_date"):
+                industry_pit.setdefault(sym, ([], []))
+                industry_pit[sym][0].append(sd)
+                industry_pit[sym][1].append(code)
         finally:
             conn.close()
 
@@ -204,6 +213,7 @@ class ReboundBacktest:
             "sentiment_map": sentiment_map, "listing_dates": listing_dates,
             "limit_down_map": limit_down_map,
             "margin_by_symbol": margin_by_symbol,
+            "industry_pit": industry_pit,
             "all_bars": dict(bars),
         }
     @staticmethod

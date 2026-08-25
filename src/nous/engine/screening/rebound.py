@@ -217,6 +217,7 @@ class ReboundEngine:
         self.total_mv: dict[str, float] = {}
         self.listing_dates: dict[str, str] = {}
         self._industry_map: Optional[dict] = None
+        self._industry_pit: Optional[dict] = None   # symbol -> [(start_date, industry_code), ...] 升序 (PIT)
         self._sentiment_map: Optional[dict] = None
         self._regime_map: Optional[dict] = None
         self._limit_down_map: Optional[dict] = None
@@ -236,6 +237,9 @@ class ReboundEngine:
         self.total_mv = memory.get("total_mv", {})
         self.listing_dates = memory.get("listing_dates", {})
         self._industry_map = memory.get("industry_map")
+        self._industry_pit = memory.get("industry_pit")
+        if self._industry_pit is None and memory.get("industry_pit_db") is not None:
+            self._industry_pit = memory.get("industry_pit_db")
         self._sentiment_map = memory.get("sentiment_map")
         self._regime_map = memory.get("regime_map")
         self._limit_down_map = memory.get("limit_down_map")
@@ -317,31 +321,48 @@ class ReboundEngine:
         except Exception:
             self._margin_map = None
 
+        # 申万 PIT 行业分类（消除行业因子前视污染）
+        try:
+            pit: dict[str, tuple[list, list]] = {}
+            for sym, sd, code in self.conn.execute(
+                    "SELECT symbol, start_date, industry_code FROM industry_pit ORDER BY symbol, start_date"):
+                pit.setdefault(sym, ([], []))
+                pit[sym][0].append(sd)
+                pit[sym][1].append(code)
+            self._industry_pit = pit
+        except Exception:
+            self._industry_pit = None
+
         self._load_sector_heat()
 
+    def _get_industry(self, symbol: str, day: str) -> Optional[str]:
+        """PIT 行业归属：取 start_date <= day 的最新一段；无 PIT 数据回退当前快照。"""
+        if self._industry_pit:
+            seq = self._industry_pit.get(symbol)
+            if seq:
+                import bisect
+                dates = seq[0]
+                i = bisect.bisect_right(dates, day) - 1
+                if i >= 0:
+                    return seq[1][i]
+        return (self._industry_map or {}).get(symbol)
+
     def _compute_sector_heat(self) -> None:
-        """板块热度 = 同 industry_l2 股票近5日平均收益（当日截面，无 point-in-time，仅当日选股用）。"""
+        """板块热度 = 同行业股票近5日平均收益（PIT 行业归属优先，消除前视污染）。"""
         ret5: dict[str, float] = {}
         for sym, bars in self.bars.items():
             if len(bars) >= 6 and bars[-1]["close"] > 0 and bars[-6]["close"] > 0:
                 ret5[sym] = bars[-1]["close"] / bars[-6]["close"] - 1.0
-        # 行业映射（当前快照）
-        if self._industry_map is None:
-            ind: dict[str, str] = {}
-            for symbol, i2 in self.conn.execute(
-                    "SELECT symbol, industry_l2 FROM stock_industry_multilevel WHERE is_current=1"):
-                if i2:
-                    ind[symbol] = i2
-            self._industry_map = ind
-        ind = self._industry_map
+        day = self.report_date
         from collections import defaultdict
         sums, cnts = defaultdict(float), defaultdict(int)
-        for sym, sec in ind.items():
-            if sym in ret5:
+        for sym in ret5:
+            sec = self._get_industry(sym, day)
+            if sec:
                 sums[sec] += ret5[sym]
                 cnts[sec] += 1
         sec_mean = {s: sums[s] / cnts[s] for s in sums if cnts[s] > 0}
-        self.sector_heat = {sym: sec_mean.get(sec, 0.0) for sym, sec in ind.items() if sym in ret5}
+        self.sector_heat = {sym: sec_mean.get(self._get_industry(sym, day), 0.0) for sym in ret5}
 
     def _load_sector_heat(self) -> None:
         self._compute_sector_heat()
