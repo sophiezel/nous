@@ -3,12 +3,13 @@
 
 rebound:
   weights:
-    oversold:                 # 超跌反弹族（合计 100）
-      ret_5d: 30              # K1_ret_5d 5日收益（越负越好）
-      price_position_20: 20   # 20日区间位置（越低越超跌）
-      ma_gap_20: 15           # MA20 乖离（负乖离越大越好）
+    oversold:                 # 超跌反弹族（合计 100）——2026-08-25 加入 margin_chg5(融资余额变化率) 待验证
+      ret_5d: 25              # K1_ret_5d 5日收益（越负越好）
+      price_position_20: 15   # 20日区间位置（越低越超跌）
+      ma_gap_20: 10           # MA20 乖离（负乖离越大越好）
       stabilize: 5            # 企稳确认（不再创新低/下影线，加分项）
       volume_dry: 20          # 缩量衰竭（量/5日均量<0.7，抛压枯竭）
+      margin_chg5: 15         # 融资余额5日变化率（资金面：杠杆资金进场，待OOS验证）
       lhb_net: 7              # 龙虎榜净买（近5日，lhb_daily）
       sector_heat: 3          # 板块热度（同行业5日平均表现，当日截面）
     strong:                   # 强势回调反包族（合计 100）

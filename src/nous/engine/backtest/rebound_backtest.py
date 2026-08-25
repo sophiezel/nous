@@ -183,6 +183,18 @@ class ReboundBacktest:
 
             # 跌停家数（按日）
             limit_down_map = self._build_limit_down_map(bars, names)
+
+            # 个股两融（margin_stock_daily；过滤 ETF 前缀 1/5）
+            margin_by_symbol: dict[str, tuple[list, list]] = {}
+            for sym, td, bal in conn.execute(
+                    "SELECT symbol, trade_date, margin_balance FROM margin_stock_daily "
+                    "WHERE trade_date>=? AND symbol NOT LIKE '1%' AND symbol NOT LIKE '5%' "
+                    "ORDER BY symbol, trade_date", (lo,)):
+                if bal is None:
+                    continue
+                margin_by_symbol.setdefault(sym, ([], []))
+                margin_by_symbol[sym][0].append(td)
+                margin_by_symbol[sym][1].append(float(bal))
         finally:
             conn.close()
 
@@ -191,6 +203,7 @@ class ReboundBacktest:
             "industry_map": industry_map, "lhb_by_date": lhb_by_date,
             "sentiment_map": sentiment_map, "listing_dates": listing_dates,
             "limit_down_map": limit_down_map,
+            "margin_by_symbol": margin_by_symbol,
             "all_bars": dict(bars),
         }
     @staticmethod

@@ -220,6 +220,7 @@ class ReboundEngine:
         self._sentiment_map: Optional[dict] = None
         self._regime_map: Optional[dict] = None
         self._limit_down_map: Optional[dict] = None
+        self._margin_map: Optional[dict] = None   # symbol -> [(trade_date, margin_balance), ...] 升序
         if memory is not None:
             self._init_memory(memory, report_date)
         else:
@@ -238,6 +239,9 @@ class ReboundEngine:
         self._sentiment_map = memory.get("sentiment_map")
         self._regime_map = memory.get("regime_map")
         self._limit_down_map = memory.get("limit_down_map")
+        self._margin_map = memory.get("margin_by_symbol")
+        if self._margin_map is None and memory.get("margin_db") is not None:
+            self._margin_map = memory.get("margin_db")
         if report_date:
             self.report_date = report_date
         else:
@@ -291,6 +295,27 @@ class ReboundEngine:
         for symbol, mv in self.conn.execute("SELECT symbol, total_mv FROM stock_fundamental"):
             if mv:
                 self.total_mv[symbol] = float(mv)
+
+        # 个股两融（近 30 交易日，供融资余额变化率因子）
+        try:
+            m_dates = [r[0] for r in self.conn.execute(
+                "SELECT trade_date FROM margin_stock_daily WHERE trade_date<=? "
+                "GROUP BY trade_date ORDER BY trade_date DESC LIMIT 30", (self.report_date,))]
+            if m_dates:
+                m_from = m_dates[-1]
+                mm: dict[str, tuple[list, list]] = {}
+                for sym, td, bal in self.conn.execute(
+                        "SELECT symbol, trade_date, margin_balance FROM margin_stock_daily "
+                        "WHERE trade_date>=? AND trade_date<=? AND symbol NOT LIKE '1%' "
+                        "AND symbol NOT LIKE '5%' ORDER BY symbol, trade_date", (m_from, self.report_date)):
+                    if bal is None:
+                        continue
+                    mm.setdefault(sym, ([], []))
+                    mm[sym][0].append(td)
+                    mm[sym][1].append(float(bal))
+                self._margin_map = mm
+        except Exception:
+            self._margin_map = None
 
         self._load_sector_heat()
 
@@ -508,6 +533,8 @@ class ReboundEngine:
                 f["volume_dry"] = vr  # 越小越缩量
                 prev5_low = min(b["low"] for b in bars[-6:-1]) if len(bars) >= 6 else closes[-1]
                 f["stabilize"] = 1.0 if closes[-1] > prev5_low else 0.0
+                # 融资余额 5 日变化率（资金面: 杠杆资金是否在进场）
+                f["margin_chg5"] = self._margin_chg5(symbol, bars[-1]["date"])
                 # 反弹弹性（AlphaReversal 启发）: 近20日最大单日涨幅 / 最大单日跌幅绝对值
                 gains, losses = [], []
                 for i in range(1, min(21, len(closes))):
@@ -626,6 +653,22 @@ class ReboundEngine:
         res.near_miss = res.near_miss[:15]
         return res
 
+    def _margin_chg5(self, symbol: str, day: str) -> float:
+        """融资余额 5 交易日变化率；无数据返回 0（中性）。"""
+        if self._margin_map is None:
+            return 0.0
+        seq = self._margin_map.get(symbol)
+        if not seq:
+            return 0.0
+        import bisect
+        dates = seq[0]
+        balances = seq[1]
+        i = bisect.bisect_right(dates, day) - 1
+        j = bisect.bisect_right(dates, day) - 6
+        if i < 0 or j < 0 or i >= len(balances) or balances[i] is None or balances[j] is None or balances[j] <= 0:
+            return 0.0
+        return balances[i] / balances[j] - 1.0
+
     def _rsi_now(self, symbol: str) -> Optional[float]:
         return _compute_rsi([b["close"] for b in self.bars[symbol]])
 
@@ -719,7 +762,8 @@ class ReboundEngine:
             return ""
         labels = {
             "oversold": {"ret_5d": "5日跌幅", "price_position_20": "20日低位", "ma_gap_20": "偏离20日线",
-                         "volume_dry": "缩量", "stabilize": "企稳", "bounce_elasticity": "反弹弹性",
+                         "volume_dry": "缩量", "stabilize": "企稳", "margin_chg5": "融资余额变化",
+                         "bounce_elasticity": "反弹弹性",
                          "lhb_net": "龙虎榜净买", "sector_heat": "板块热度"},
             "strong": {"limit_up_streak": "连板高度", "volume_accel": "放量",
                         "lhb_net": "龙虎榜净买", "sector_heat": "板块热度"},
