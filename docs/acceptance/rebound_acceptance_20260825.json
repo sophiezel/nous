@@ -1,0 +1,53 @@
+{
+  "metrics": {
+    "window": "2024-01-01..2026-08-21",
+    "n_trade_days": 654,
+    "n_closed": 893,
+    "n_open": 7,
+    "win_rate": 0.533,
+    "profit_factor": 0.7672,
+    "expectancy": -547.4,
+    "gross_profit": 1611243.44,
+    "gross_loss": 2100070.14,
+    "max_drawdown": 0.4959,
+    "total_return": -0.4934,
+    "final_equity": 506646.74,
+    "by_family": {
+      "oversold": {
+        "n": 207,
+        "win_rate": 0.5604
+      },
+      "strong": {
+        "n": 686,
+        "win_rate": 0.5248
+      }
+    },
+    "reasons": {
+      "market_exit": 4,
+      "trail": 178,
+      "stop": 95,
+      "time": 361,
+      "market_half": 19,
+      "take_first": 236
+    },
+    "trusted": true
+  },
+  "benchmarks": {
+    "沪深300": {
+      "total_return": 0.364,
+      "max_drawdown": 0.1566,
+      "days": 639
+    },
+    "中证500": {
+      "total_return": 0.452,
+      "max_drawdown": 0.199,
+      "days": 639
+    },
+    "中证1000": {
+      "total_return": 0.2984,
+      "max_drawdown": 0.2667,
+      "days": 639
+    }
+  },
+  "verdict": false
+}

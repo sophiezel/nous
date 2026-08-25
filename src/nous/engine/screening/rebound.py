@@ -178,17 +178,51 @@ def _consecutive_limit_up(bars: list[dict], limit: float) -> int:
 # ══════════════════════════════════════════════════════
 
 class ReboundEngine:
-    def __init__(self, report_date: str = "", n_bars: int = 40):
-        self.conn = get_db(write=False)
+    def __init__(self, report_date: str = "", n_bars: int = 40, memory: Optional[dict] = None):
+        """
+        memory=None: DB 模式（读 screener.db）。
+        memory=dict: 内存模式（回测用），键:
+          bars / names / lhb_net5 / sector_heat / total_mv / listing_dates /
+          industry_map / sentiment_map / regime_map / limit_down_map
+          其中 *_map 为 {日期: 值}，用于回测日循环避免反复查库。
+        """
+        self.conn = None
         self.n_bars = n_bars
-        self.report_date = report_date or self._latest_date()
-        self.bars: dict[str, list[dict]] = {}        # symbol -> 最近 n 条日线（升序）
+        self.bars: dict[str, list[dict]] = {}
         self.names: dict[str, str] = {}
-        self.lhb_net5: dict[str, float] = {}         # symbol -> 近5日龙虎榜净买
-        self.sector_heat: dict[str, float] = {}      # symbol -> 板块热度（同行业5日均收益）
+        self.lhb_net5: dict[str, float] = {}
+        self.sector_heat: dict[str, float] = {}
         self.total_mv: dict[str, float] = {}
-        self.listing_dates: dict[str, str] = {}      # symbol -> 最早 trade_date（上市近似）
-        self._load()
+        self.listing_dates: dict[str, str] = {}
+        self._industry_map: Optional[dict] = None
+        self._sentiment_map: Optional[dict] = None
+        self._regime_map: Optional[dict] = None
+        self._limit_down_map: Optional[dict] = None
+        if memory is not None:
+            self._init_memory(memory, report_date)
+        else:
+            self.report_date = report_date or self._latest_date()
+            self.conn = get_db(write=False)
+            self._load()
+
+    def _init_memory(self, memory: dict, report_date: str) -> None:
+        self.bars = memory.get("bars", {})
+        self.names = memory.get("names", {})
+        self.lhb_net5 = memory.get("lhb_net5", {})
+        self.sector_heat = memory.get("sector_heat", {})
+        self.total_mv = memory.get("total_mv", {})
+        self.listing_dates = memory.get("listing_dates", {})
+        self._industry_map = memory.get("industry_map")
+        self._sentiment_map = memory.get("sentiment_map")
+        self._regime_map = memory.get("regime_map")
+        self._limit_down_map = memory.get("limit_down_map")
+        if report_date:
+            self.report_date = report_date
+        else:
+            d = max((b[-1]["date"] for b in self.bars.values() if b), default=date.today().isoformat())
+            self.report_date = d
+        if not self.sector_heat and self._industry_map is not None:
+            self._compute_sector_heat()
 
     # ── 基础加载 ────────────────────────────────────
     def _latest_date(self) -> str:
@@ -238,20 +272,21 @@ class ReboundEngine:
 
         self._load_sector_heat()
 
-    def _load_sector_heat(self) -> None:
+    def _compute_sector_heat(self) -> None:
         """板块热度 = 同 industry_l2 股票近5日平均收益（当日截面，无 point-in-time，仅当日选股用）。"""
-        # 近5日收益（用已加载 bars）
         ret5: dict[str, float] = {}
         for sym, bars in self.bars.items():
             if len(bars) >= 6 and bars[-1]["close"] > 0 and bars[-6]["close"] > 0:
                 ret5[sym] = bars[-1]["close"] / bars[-6]["close"] - 1.0
         # 行业映射（当前快照）
-        ind: dict[str, str] = {}
-        for symbol, i2 in self.conn.execute(
-                "SELECT symbol, industry_l2 FROM stock_industry_multilevel WHERE is_current=1"):
-            if i2:
-                ind[symbol] = i2
-        # 行业均值
+        if self._industry_map is None:
+            ind: dict[str, str] = {}
+            for symbol, i2 in self.conn.execute(
+                    "SELECT symbol, industry_l2 FROM stock_industry_multilevel WHERE is_current=1"):
+                if i2:
+                    ind[symbol] = i2
+            self._industry_map = ind
+        ind = self._industry_map
         from collections import defaultdict
         sums, cnts = defaultdict(float), defaultdict(int)
         for sym, sec in ind.items():
@@ -261,13 +296,19 @@ class ReboundEngine:
         sec_mean = {s: sums[s] / cnts[s] for s in sums if cnts[s] > 0}
         self.sector_heat = {sym: sec_mean.get(sec, 0.0) for sym, sec in ind.items() if sym in ret5}
 
+    def _load_sector_heat(self) -> None:
+        self._compute_sector_heat()
+
     # ── 市场状态 ────────────────────────────────────
     def _get_sentiment_status(self) -> str:
         """情绪 gate（sentiment_cache.score 阈值，配置可调）。"""
-        row = self.conn.execute(
-            "SELECT score FROM sentiment_cache WHERE date<=? ORDER BY date DESC LIMIT 1",
-            (self.report_date,)).fetchone()
-        score = int(row[0]) if row and row[0] else 0
+        if self._sentiment_map is not None:
+            score = int(self._sentiment_map.get(self.report_date, 0) or 0)
+        else:
+            row = self.conn.execute(
+                "SELECT score FROM sentiment_cache WHERE date<=? ORDER BY date DESC LIMIT 1",
+                (self.report_date,)).fetchone()
+            score = int(row[0]) if row and row[0] else 0
         th = _risk("gate", "sentiment_thresholds", default={"hot": 75, "warm": 60, "cool": 40})
         if score >= th.get("hot", 75):
             return "hot"
@@ -279,6 +320,8 @@ class ReboundEngine:
 
     def _get_regime(self) -> str:
         """regime（规则版）: 复用 market_regime.label_regime（沪深300 20日涨+波动率，透明规则）。"""
+        if self._regime_map is not None:
+            return self._regime_map.get(self.report_date, "SIDEWAYS")
         try:
             rows = self.conn.execute(
                 "SELECT trade_date, close FROM index_daily WHERE symbol='IDX_000300' "
@@ -296,7 +339,8 @@ class ReboundEngine:
 
     def _get_limit_down_count(self, day: str) -> int:
         """当日跌停家数（推断：跌幅 <= -涨停线）。"""
-        # 用全市场当日跌幅推断
+        if self._limit_down_map is not None:
+            return int(self._limit_down_map.get(day, 0) or 0)
         n = 0
         for sym, sym_bars in self.bars.items():
             if len(sym_bars) < 2:
@@ -489,6 +533,8 @@ class ReboundEngine:
 
         oversold_pool, strong_pool = [], []
         for symbol in self.bars:
+            if not self.bars[symbol]:
+                continue
             if symbol not in self.names:
                 continue
             if self.bars[symbol][-1]["date"] != self.report_date:
