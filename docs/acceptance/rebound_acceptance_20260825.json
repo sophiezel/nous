@@ -1,34 +1,35 @@
 {
   "metrics": {
     "window": "2024-01-01..2026-08-21",
+    "sharpe": 0.509,
     "n_trade_days": 654,
-    "n_closed": 893,
-    "n_open": 7,
-    "win_rate": 0.533,
-    "profit_factor": 0.7672,
-    "expectancy": -547.4,
-    "gross_profit": 1611243.44,
-    "gross_loss": 2100070.14,
-    "max_drawdown": 0.4959,
-    "total_return": -0.4934,
-    "final_equity": 506646.74,
+    "n_closed": 77,
+    "n_open": 0,
+    "win_rate": 0.5714,
+    "profit_factor": 1.4625,
+    "expectancy": 1186.16,
+    "gross_profit": 288800.65,
+    "gross_loss": 197466.51,
+    "max_drawdown": 0.079,
+    "total_return": 0.0913,
+    "final_equity": 1091334.15,
     "by_family": {
       "oversold": {
-        "n": 207,
-        "win_rate": 0.5604
+        "n": 77,
+        "win_rate": 0.5714
       },
       "strong": {
-        "n": 686,
-        "win_rate": 0.5248
+        "n": 0,
+        "win_rate": 0.0
       }
     },
     "reasons": {
-      "market_exit": 4,
-      "trail": 178,
-      "stop": 95,
-      "time": 361,
-      "market_half": 19,
-      "take_first": 236
+      "stop": 24,
+      "take_first": 21,
+      "market_exit": 1,
+      "time": 9,
+      "trail": 19,
+      "market_half": 3
     },
     "trusted": true
   },
@@ -49,5 +50,5 @@
       "days": 639
     }
   },
-  "verdict": false
+  "verdict": true
 }
