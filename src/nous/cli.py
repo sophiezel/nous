@@ -131,11 +131,11 @@ def screen(
 
 @app.command()
 def rebound(
-    top_n: int = typer.Option(20, "--top", "-n", help="显示前N只"),
+    top_n: int = typer.Option(3, "--top", "-n", help="显示最符合条件的 N 只"),
     date: str = typer.Option("", "--date", "-d", help="日期, 默认最新交易日"),
     no_report: bool = typer.Option(False, "--no-report", help="不写每日报告/不写追踪"),
 ):
-    """短期反弹选股 (rebound 引擎: 超跌反弹 + 强势回调反包)."""
+    """短期反弹选股 (超跌反弹模型: 跌过头+企稳时才出手)."""
     import time
     from pathlib import Path
 
@@ -150,47 +150,37 @@ def rebound(
     engine = ReboundEngine(report_date=date)
     try:
         result = engine.scan()
-        console.print(Panel.fit("[bold cyan]Nous Rebound — 短期反弹选股[/bold cyan]", border_style="cyan"))
+        console.print(Panel.fit("[bold cyan]Nous Rebound — 超跌反弹选股[/bold cyan]", border_style="cyan"))
+        regime_cn = {"BULL": "上涨", "SIDEWAYS": "震荡", "BEAR": "下跌", "VOLATILE": "高波动"}.get(result.regime, result.regime)
         console.print(
-            f"  日期: {result.report_date} | regime: [bold]{result.regime}[/bold] | "
-            f"情绪: [bold]{result.sentiment_status}[/bold] | 总仓位上限: [bold]{result.position_cap:.0%}[/bold]"
-        )
-        console.print(
-            f"  超跌族: {result.oversold_count} 只 | 反包族: {result.strong_count} 只 | "
-            f"跌停警报: {'⚠️ 降仓' if result.limit_down_alert else '—'}\n"
+            f"  日期: {result.report_date} | 大盘: [bold]{regime_cn}[/bold] | "
+            f"市场情绪: [bold]{result.sentiment_status}[/bold]（warm=普涨冷=普跌） | 可动用资金上限: [bold]{result.position_cap:.0%}[/bold]"
         )
 
         picks = result.top(top_n)
         if not picks:
-            console.print("  [dim]今日无候选（闸门关闭或无超跌/反包机会）[/dim]")
+            console.print("\n  [yellow]今天没有符合「跌过头+企稳」的股票[/yellow]——市场在普涨/上涨，没有超跌机会，空仓等待是正确的。")
             if result.near_miss:
-                console.print("\n  [dim]── 观察列表（差一点触发超跌信号）──[/dim]")
-                table2 = Table(title="Near-miss 观察")
-                table2.add_column("代码", style="cyan")
-                table2.add_column("名称")
-                table2.add_column("RSI", justify="right")
-                table2.add_column("量比", justify="right")
-                table2.add_column("缺口", style="dim")
-                for nm in result.near_miss[:10]:
-                    table2.add_row(nm["symbol"], nm["name"], f"{nm['rsi']:.1f}",
-                                   f"{nm.get('volume_ratio') or 0:.1f}", nm["gap"])
-                console.print(table2)
+                console.print("\n  [bold]观察名单（明天可能转正）[/bold]：这些股票已经跌了 + 今天收阳，"
+                              "只是「跌过头」程度还差一点（RSI 35~37）。明天若继续下跌、放量、收阳，就可能正式入选。")
+                for nm in result.near_miss[:5]:
+                    console.print(
+                        f"    [cyan]{nm['symbol']}[/cyan] {nm['name']:<6s} "
+                        f"跌过头程度 {nm['rsi']:.1f}（差一点点） | {nm['gap']}")
         else:
-            family_name = {"oversold": "超跌", "strong": "反包"}
-            table = Table(title=f"候选 TOP{len(picks)}")
-            table.add_column("族", style="cyan")
-            table.add_column("代码", style="cyan")
-            table.add_column("名称")
-            table.add_column("得分", justify="right", style="green")
-            table.add_column("触发", style="dim")
-            table.add_column("止损", justify="right")
-            table.add_column("目标", justify="right")
-            for s in picks:
-                table.add_row(
-                    family_name.get(s.family, s.family), s.symbol, s.name,
-                    f"{s.score:.1f}", s.trigger[:28], f"{s.stop_loss:.2f}", f"{s.take_profit_first:.2f}",
-                )
-            console.print(table)
+            console.print(f"\n  [bold green]找到 {len(picks)} 只最符合条件的超跌反弹候选（按符合度排序）[/bold green]\n")
+            for i, s in enumerate(picks, 1):
+                console.print(f"[bold cyan]{i}. {s.name}（{s.symbol}）[/bold cyan]  符合度 {s.score:.0f}/100")
+                console.print(f"    为什么选它: {s.trigger}")
+                if s.score_detail:
+                    console.print(f"    得分构成: {s.score_detail}")
+                console.print(f"    ├─ 参考买入价: [bold]{s.entry_ref:.2f} 元[/bold]（明天开盘买；若开盘比今天收盘贵超过 5%，不追）")
+                console.print(f"    ├─ 止损价: [bold]{s.stop_loss:.2f} 元[/bold]（跌破就卖，最多亏约 {abs(s.stop_loss / s.entry_ref - 1) * 100:.0f}%）")
+                console.print(f"    ├─ 第一个目标: [bold]{s.take_profit_first:.2f} 元[/bold]（涨到这先卖一半落袋）")
+                ex_peak = s.entry_ref * 1.08
+                ex_trail = ex_peak * (1 - s.trail_drawdown)
+                console.print(f"    ├─ 剩下的一半: 股价创新高后回落 {s.trail_drawdown:.0%} 就卖（例如最高到 {ex_peak:.2f}，回落到约 {ex_trail:.2f} 卖）")
+                console.print(f"    └─ 兜底: 持有满 {s.time_stop_days} 天还没赚到 2%，收盘卖出不恋战（最多占仓位 {s.position_pct:.0%}）\n")
 
         if not no_report:
             import os

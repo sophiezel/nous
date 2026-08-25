@@ -92,14 +92,16 @@ class EntrySignal:
     symbol: str
     name: str
     family: str            # "oversold" | "strong"
-    trigger: str           # 命中触发描述
+    trigger: str           # 命中触发描述（大白话）
     score: float           # 0-100 加权排序分
     confidence: float      # 0-100
+    entry_ref: float       # 信号日收盘（参考买入基准）
     stop_loss: float       # 预估止损价（执行层以买入日实际低点/ATR 落实）
     take_profit_first: float  # 首目标价（+5%/+8%）
     trail_drawdown: float  # 移动止盈回撤
     time_stop_days: int    # 时间止损 N 日
     position_pct: float    # 单票仓位上限
+    score_detail: str = ""   # 得分构成（中文，透明）
     detail: str = ""
 
 
@@ -250,16 +252,16 @@ class ReboundEngine:
         return row[0] if row and row[0] else date.today().isoformat()
 
     def _load(self) -> None:
-        # 最近 n_bars 个交易日的日线（单查询，避免 short_term.py 的窗口 bug: 升序 LIMIT 取到最早 N 天）
+        # 最近 n_bars 个交易日的日线（走 stock_daily_all 视图：年分区+热表全量，支持历史日期）
         dates = [r[0] for r in self.conn.execute(
-            "SELECT trade_date FROM stock_daily WHERE trade_date<=? "
+            "SELECT trade_date FROM stock_daily_all WHERE trade_date<=? "
             "GROUP BY trade_date ORDER BY trade_date DESC LIMIT ?",
             (self.report_date, self.n_bars))]
         if not dates:
             return
         cutoff = dates[-1]
         rows = self.conn.execute(
-            "SELECT symbol, trade_date, open, high, low, close, volume, amount FROM stock_daily "
+            "SELECT symbol, trade_date, open, high, low, close, volume, amount FROM stock_daily_all "
             "WHERE trade_date >= ? AND trade_date <= ?", (cutoff, self.report_date)).fetchall()
         for symbol, td, o, h, l, c, v, amt in rows:
             self.bars.setdefault(symbol, []).append(
@@ -448,7 +450,7 @@ class ReboundEngine:
         vr = _compute_volume_ratio([b["volume"] for b in bars])
         if vr is None or vr <= 1.5:
             return None
-        return f"连跌{drops}日 RSI{rsi:.0f}<{max_rsi:.0f} 阳线 量比{vr:.1f}>1.5"
+        return f"连续跌了{drops}天 + 跌过头(RSI {rsi:.0f}) + 今天收阳 + 放量{vr:.1f}倍"
 
     def _strong_triggers(self, symbol: str) -> Optional[str]:
         """反包族触发（任一命中）: 徐翔式 / 赵老哥式 / 作手新一式"""
@@ -601,7 +603,7 @@ class ReboundEngine:
                 conf = min(85.0, 40.0 + (30 - (self._rsi_now(symbol) or 30)) * 2 + info["score"] * 0.3)
                 if res.sentiment_status in ("cold", "cool"):
                     conf = min(100.0, conf + 10)
-                sig = self._make_signal(symbol, "oversold", trig, info["score"], conf)
+                sig = self._make_signal(symbol, "oversold", trig, info["score"], conf, info.get("factors"))
                 res.candidates.append(sig)
             res.oversold_count = len(oversold_pool)
 
@@ -613,7 +615,7 @@ class ReboundEngine:
                 conf = min(90.0, 60.0 + info["score"] * 0.3)
                 if res.sentiment_status in ("hot", "warm"):
                     conf = min(100.0, conf + 5)
-                sig = self._make_signal(symbol, "strong", trig, info["score"], conf)
+                sig = self._make_signal(symbol, "strong", trig, info["score"], conf, info.get("factors"))
                 res.candidates.append(sig)
             res.strong_count = len(strong_pool)
 
@@ -646,9 +648,9 @@ class ReboundEngine:
             return None
         # 差 RSI 一口气（35~45）或只跌 1 日
         if drops2 and 35 <= rsi < 45:
-            gap = f"RSI{rsi:.0f} 未到35"
+            gap = f"RSI {rsi:.1f}，还差一点点才够跌过头"
         elif drops1 and rsi < 35 and vr and vr > 1.5:
-            gap = "仅连跌1日"
+            gap = "只连续跌了1天"
         else:
             return None
         return {"symbol": symbol, "name": self.names.get(symbol, ""), "rsi": round(rsi, 1),
@@ -680,7 +682,8 @@ class ReboundEngine:
         return [ret_5d, pp, mg, rsi, vr, stab, atr_pct, ret_1d, ret_3d,
                 self.lhb_net5.get(symbol, 0.0), self.sector_heat.get(symbol, 0.0)]
 
-    def _make_signal(self, symbol: str, family: str, trigger: str, score: float, confidence: float) -> EntrySignal:
+    def _make_signal(self, symbol: str, family: str, trigger: str, score: float, confidence: float,
+                     factors: Optional[dict] = None) -> EntrySignal:
         bars = self.bars[symbol]
         close = bars[-1]["close"]
         atr = _compute_atr(bars) or close * 0.03
@@ -695,16 +698,39 @@ class ReboundEngine:
             ma20 = _compute_ma([b["close"] for b in bars], 20) or close
             stop_loss = min(close * (1 - float(_risk("stop_loss", "strong_family_pct", default=0.05))), ma20)
             time_days = int(_risk("time_stop", "strong_days", default=3))
+        score_detail = self._fmt_score_detail(family, factors)
         return EntrySignal(
             symbol=symbol, name=self.names.get(symbol, ""), family=family, trigger=trigger,
             score=round(float(score), 1), confidence=round(float(confidence), 1),
+            entry_ref=round(close, 2),
             stop_loss=round(stop_loss, 2),
             take_profit_first=round(close * (1 + first_pct), 2),
             trail_drawdown=float(_risk("take_profit", "trail_drawdown", default=0.04)),
             time_stop_days=time_days,
             position_pct=float(_risk("position", "max_single_pct", default=0.15)),
+            score_detail=score_detail,
             detail=f"信号日收盘 {close:.2f}",
         )
+
+    @staticmethod
+    def _fmt_score_detail(family: str, factors: Optional[dict]) -> str:
+        """得分构成（中文，透明）：因子 → 归一化值×权重。"""
+        if not factors:
+            return ""
+        labels = {
+            "oversold": {"ret_5d": "5日跌幅", "price_position_20": "20日低位", "ma_gap_20": "偏离20日线",
+                         "volume_dry": "缩量", "stabilize": "企稳", "bounce_elasticity": "反弹弹性",
+                         "lhb_net": "龙虎榜净买", "sector_heat": "板块热度"},
+            "strong": {"limit_up_streak": "连板高度", "volume_accel": "放量",
+                        "lhb_net": "龙虎榜净买", "sector_heat": "板块热度"},
+        }
+        weights = WEIGHTS.get(family, {})
+        lbl = labels.get(family, {})
+        parts = []
+        for k, w in weights.items():
+            v = (factors.get(k) or 0.0) * w
+            parts.append(f"{lbl.get(k, k)} {v:.0f}/{w:.0f}")
+        return "，".join(parts)
 
     def close(self) -> None:
         try:
@@ -740,14 +766,14 @@ def render_markdown(res: ReboundResult) -> str:
         "",
         "## 候选列表（按得分降序）",
         "",
-        "| 族 | 代码 | 名称 | 得分 | 置信 | 触发 | 止损(预估) | 首目标 | 时间止损 | 仓位 |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| # | 名称 | 代码 | 符合度 | 为什么选它 | 参考买入价 | 止损价 | 首目标 | 剩余移动止盈 | 时间止损 | 得分构成 |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for s in res.candidates:
+    for i, s in enumerate(res.candidates, 1):
         lines.append(
-            f"| {FAMILY_CN.get(s.family, s.family)} | {s.symbol} | {s.name} | {s.score:.1f} | "
-            f"{s.confidence:.1f} | {s.trigger} | {s.stop_loss:.2f} | {s.take_profit_first:.2f} | "
-            f"{s.time_stop_days}日 | {s.position_pct:.0%} |"
+            f"| {i} | {s.name} | {s.symbol} | {s.score:.0f}/100 | {s.trigger} | {s.entry_ref:.2f} | "
+            f"{s.stop_loss:.2f} | {s.take_profit_first:.2f} | 新高回撤{s.trail_drawdown:.0%} | "
+            f"{s.time_stop_days}日<+2% | {s.score_detail} |"
         )
     lines += ["", "## 执行纪律（规格 #9）", "", "- 买入：次日开盘（信号日收盘后计算，零前视）",
               "- 止损：超跌族=破买入日最低价（<1% 则放宽到 买入价−2×ATR）；反包族=破 MA20 或 −5%",
