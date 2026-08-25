@@ -59,3 +59,59 @@
 
 - 每次做T 记入 recommendation_track 之外的做T日志（日期/标的/方向/买卖价/差价/成本），供 #11 回测与复盘校准做T 参数。
 - 月度复盘：正T/倒T 胜率、单笔差价分布、做T 对总收益的贡献——若做T 整体拖累（扣费后负贡献），**暂停做T**（纪律优先）。
+
+---
+
+## 7. 日常使用节奏（recommendation_tracker 闭环）
+
+> 模型定位：宁缺毋滥——只在"跌过头 + 企稳确认"时出手（年化约 30 次信号，约 50% 的交易日有票）。warm/普涨日无超跌信号是**正确行为**，不是故障。
+
+### 7.1 每日流程（3 步）
+
+```bash
+# ① 盘后出信号
+nous rebound -n 20
+#    → 有候选表：买入决策（次日开盘限价 ≤ 信号日收盘×1.05，人工执行）
+#    → 无候选：看 near-miss 观察列表（连跌+放量但 RSI 未到 35 的"明日预备队"）
+#    → 自动写 recommendation_track + 每日报告 (~/nous-data/reports/rebound_YYYYMMDD.md)
+
+# ② 人工执行（模型只出信号，不自动下单——设计决策）
+#    买入：次日开盘；止损=买入日低点（<1% 则 ATR2× 兜底）；首目标+5% 出半+移动止盈；时间止损 6 日
+
+# ③ 6 个交易日后结算
+nous rebound-review                 # 全部待结算
+nous rebound-review --from YYYY-MM-DD   # 只复盘某日之后
+```
+
+### 7.2 复盘结算规则（与验收模型一致）
+
+- 入场 = 推荐日次日开盘；跳空 >5%（开盘 > 推荐日收盘×1.05）→ 判未成交（标 skipped）
+- 破买入日低点 → 输（按止损价）；收盘触及 +5% → 赢；第 6 日收盘 ≥+2% → 赢，<+2% → 输
+- 持有期未满的记录自动留待下次复盘
+
+### 7.3 成绩查询
+
+```sql
+-- 最近推荐与结算状态
+SELECT rec_date, symbol, name, score, actual_return, hit
+FROM recommendation_track ORDER BY id DESC LIMIT 30;
+
+-- 按月真实表现（3 个月观察期的验收口径：胜率 ≥55%）
+SELECT strftime('%Y-%m', rec_date) ym, COUNT(*) n,
+       ROUND(1.0*SUM(hit)/COUNT(*),3) win_rate,
+       ROUND(AVG(actual_return),4) avg_ret
+FROM recommendation_track WHERE hit IS NOT NULL
+GROUP BY ym ORDER BY ym;
+```
+
+### 7.4 3 个月实盘观察计划
+
+1. 每日跑 ① ② ③，让 recommendation_track 积累真实成绩（约 60–80 笔）。
+2. 3 个月后看：实盘胜率是否复现回测的 ≥55%、期望是否为正。
+3. 复现 → 维持；不达标 → 回到地图开新校准迭代（基建已就绪，成本低）。
+4. 全程**人工执行 + 严格止损纪律**——模型的价值是"帮你发现超跌企稳机会"，不是替你承担执行风险。
+
+### 7.5 反包族与可选实验
+
+- 反包族（徐翔/赵老哥/作手新一）在样本外无边际，已关闭（config/rebound_risk.yaml `families: ["oversold"]`）。未来若想复开：改配置 + 重新验收（A1–A6）。
+- ML 对照（LGBM）已证不叠加（Q11）。勿在未复验前引入。
