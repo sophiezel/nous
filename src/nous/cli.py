@@ -163,6 +163,18 @@ def rebound(
         picks = result.top(top_n)
         if not picks:
             console.print("  [dim]今日无候选（闸门关闭或无超跌/反包机会）[/dim]")
+            if result.near_miss:
+                console.print("\n  [dim]── 观察列表（差一点触发超跌信号）──[/dim]")
+                table2 = Table(title="Near-miss 观察")
+                table2.add_column("代码", style="cyan")
+                table2.add_column("名称")
+                table2.add_column("RSI", justify="right")
+                table2.add_column("量比", justify="right")
+                table2.add_column("缺口", style="dim")
+                for nm in result.near_miss[:10]:
+                    table2.add_row(nm["symbol"], nm["name"], f"{nm['rsi']:.1f}",
+                                   f"{nm.get('volume_ratio') or 0:.1f}", nm["gap"])
+                console.print(table2)
         else:
             family_name = {"oversold": "超跌", "strong": "反包"}
             table = Table(title=f"候选 TOP{len(picks)}")

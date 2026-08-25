@@ -113,6 +113,7 @@ class ReboundResult:
     candidates: list = field(default_factory=list)   # EntrySignal 已按分数降序
     oversold_count: int = 0
     strong_count: int = 0
+    near_miss: list = field(default_factory=list)    # 差一点触发的观察列表 (dict)
     skipped: dict = field(default_factory=dict)      # 过滤统计
 
     def top(self, n: int = 20) -> list:
@@ -582,6 +583,10 @@ class ReboundEngine:
                 t = self._oversold_trigger(symbol)
                 if t:
                     oversold_pool.append((symbol, t))
+                else:
+                    nm = self._near_miss(symbol)
+                    if nm:
+                        res.near_miss.append(nm)
             if "strong" in families and not block_strong:
                 t = self._strong_triggers(symbol)
                 if t:
@@ -615,10 +620,39 @@ class ReboundEngine:
         res.candidates.sort(key=lambda s: s.score, reverse=True)
         res.candidates = [c for c in res.candidates if c.score >= min_score]
         res.candidates = res.candidates[: _risk("position", "max_daily_picks", default=5) * 4]
+        res.near_miss.sort(key=lambda n: n["rsi"])
+        res.near_miss = res.near_miss[:15]
         return res
 
     def _rsi_now(self, symbol: str) -> Optional[float]:
         return _compute_rsi([b["close"] for b in self.bars[symbol]])
+
+    def _near_miss(self, symbol: str) -> Optional[dict]:
+        """观察列表：连跌≥2 + 阳线 + 量比>1.5 但 RSI 未到 35（或连跌只 1 日）的候选。"""
+        bars = self.bars[symbol]
+        closes = [b["close"] for b in bars]
+        if len(closes) < 16:
+            return None
+        # 连跌 2 日
+        drops2 = all(closes[-i] < closes[-i - 1] for i in (1, 2))
+        drops1 = closes[-1] < closes[-2]
+        if not drops2 and not drops1:
+            return None
+        rsi = _compute_rsi(closes)
+        if rsi is None:
+            return None
+        vr = _compute_volume_ratio([b["volume"] for b in bars])
+        if bars[-1]["close"] <= bars[-1]["open"]:
+            return None
+        # 差 RSI 一口气（35~45）或只跌 1 日
+        if drops2 and 35 <= rsi < 45:
+            gap = f"RSI{rsi:.0f} 未到35"
+        elif drops1 and rsi < 35 and vr and vr > 1.5:
+            gap = "仅连跌1日"
+        else:
+            return None
+        return {"symbol": symbol, "name": self.names.get(symbol, ""), "rsi": round(rsi, 1),
+                "volume_ratio": round(vr, 2) if vr else None, "gap": gap}
 
     def ml_feature_vector(self, symbol: str) -> list[float]:
         """ML 特征向量（PIT，窗口 ≤20 日；与 _family_scores 同源，供 #12 ML 对照用）。
