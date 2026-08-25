@@ -620,6 +620,32 @@ class ReboundEngine:
     def _rsi_now(self, symbol: str) -> Optional[float]:
         return _compute_rsi([b["close"] for b in self.bars[symbol]])
 
+    def ml_feature_vector(self, symbol: str) -> list[float]:
+        """ML 特征向量（PIT，窗口 ≤20 日；与 _family_scores 同源，供 #12 ML 对照用）。
+        顺序: [ret_5d, price_position_20, ma_gap_20, rsi14, volume_ratio, stabilize,
+               atr_pct, ret_1d, ret_3d, lhb_net5, sector_heat]
+        """
+        bars = self.bars[symbol]
+        closes = [b["close"] for b in bars]
+        if len(closes) < 6:
+            return [0.0] * 11
+        ret_5d = closes[-1] / closes[-6] - 1.0
+        lo20 = min(b["low"] for b in bars[-20:])
+        hi20 = max(b["high"] for b in bars[-20:])
+        pp = (closes[-1] - lo20) / (hi20 - lo20) if hi20 > lo20 else 0.5
+        ma20 = _compute_ma(closes, 20) or closes[-1]
+        mg = (closes[-1] - ma20) / ma20
+        rsi = _compute_rsi(closes) or 50.0
+        vr = _compute_volume_ratio([b["volume"] for b in bars]) or 1.0
+        prev5_low = min(b["low"] for b in bars[-6:-1]) if len(bars) >= 6 else closes[-1]
+        stab = 1.0 if closes[-1] > prev5_low else 0.0
+        atr = _compute_atr(bars) or closes[-1] * 0.03
+        atr_pct = atr / closes[-1] if closes[-1] > 0 else 0.0
+        ret_1d = closes[-1] / closes[-2] - 1.0 if len(closes) >= 2 else 0.0
+        ret_3d = closes[-1] / closes[-4] - 1.0 if len(closes) >= 4 else 0.0
+        return [ret_5d, pp, mg, rsi, vr, stab, atr_pct, ret_1d, ret_3d,
+                self.lhb_net5.get(symbol, 0.0), self.sector_heat.get(symbol, 0.0)]
+
     def _make_signal(self, symbol: str, family: str, trigger: str, score: float, confidence: float) -> EntrySignal:
         bars = self.bars[symbol]
         close = bars[-1]["close"]

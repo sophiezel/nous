@@ -267,6 +267,15 @@ class ReboundBacktest:
             result = engine.scan()
         except Exception:
             return
+        # ML 对照（#12）: 用模型概率替换透明加权得分
+        ml_rank = getattr(self, "ml_rank", None)
+        if ml_rank is not None:
+            for c in result.candidates:
+                try:
+                    prob = ml_rank(engine, c.symbol)
+                    c.score = float(prob) * 100.0
+                except Exception:
+                    pass
         if not result.candidates:
             return
         max_picks = int(RISK.get("position", {}).get("max_daily_picks", 5))
@@ -522,12 +531,14 @@ class ReboundBacktest:
 def run_backtest(start: str, end: str, initial_capital: float = 1_000_000.0,
                  risk: Optional[dict] = None, weights: Optional[dict] = None,
                  fee_rate: Optional[float] = None,
-                 entry_mode: str = "next_open") -> dict:
+                 entry_mode: str = "next_open",
+                 ml_rank=None) -> dict:
     """
     risk/weights: 覆盖参数（校准迭代用）。临时替换模块全局，跑完恢复。
     risk = rebound_risk.yaml 的 rebound.risk 段；weights = rebound_weights.yaml 的 rebound.weights 段。
     fee_rate: 费用覆盖（诊断用；验收固定 0.3%）。
     entry_mode: "next_open"(验收纪律) | "signal_close"(诊断用，违反 P6，仅定位追高问题)。
+    ml_rank: callable(engine, symbol) -> prob in [0,1]（#12 ML 对照，替换透明加权得分）。
     """
     import nous.engine.screening.rebound as rmod
     saved_risk_r, saved_w = rmod.RISK, rmod.WEIGHTS
@@ -542,6 +553,8 @@ def run_backtest(start: str, end: str, initial_capital: float = 1_000_000.0,
     try:
         bt = ReboundBacktest(start, end, initial_capital)
         bt.entry_mode = entry_mode
+        if ml_rank is not None:
+            bt.ml_rank = ml_rank
         return bt.run()
     finally:
         rmod.RISK, rmod.WEIGHTS = saved_risk_r, saved_w
