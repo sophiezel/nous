@@ -26,4 +26,5 @@ rebound:
       max_deviation_pp: 15
       min_ic: 0.0
       min_icir: 0.3
-    status: "initial-values"  # initial-values | calibrated
+    status: "calibrated-oversold-only"   # 2026-08-25: 超跌族定向验证胜出（A2）；反包族关闭；反弹弹性因子过拟合已排除
+    result_note: "超跌族only OOS: WR 57.1% PF 1.46 期望+1186 Sharpe+0.51 回撤7.9%; 双窗口稳健"

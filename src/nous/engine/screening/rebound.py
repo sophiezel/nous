@@ -22,7 +22,26 @@ from pathlib import Path
 from typing import Optional
 
 # ── 路径 ─────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+import os
+import sys
+from dataclasses import dataclass, field
+from datetime import date, datetime
+from pathlib import Path
+from typing import Optional
+
+# 仓库根：从模块位置向上找到含 config/rebound_weights.yaml 的目录
+def _find_repo_root() -> Path:
+    env_dir = os.environ.get("NOUS_CONFIG_DIR", "")
+    if env_dir and (Path(env_dir) / "rebound_weights.yaml").exists():
+        return Path(env_dir).parent
+    cur = Path(__file__).resolve()
+    for _ in range(6):
+        if (cur / "config" / "rebound_weights.yaml").exists():
+            return cur
+        cur = cur.parent
+    return cur
+
+PROJECT_ROOT = _find_repo_root()
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -405,18 +424,21 @@ class ReboundEngine:
 
     # ── 族触发 ──────────────────────────────────────
     def _oversold_trigger(self, symbol: str) -> Optional[str]:
-        """超跌族硬触发（方新侠语义，全部满足）: 连跌3日 + RSI14<30 + 阳线 + 量比>1.5"""
+        """超跌族硬触发（方新侠语义，全部满足）: 连跌N日 + RSI<M + 阳线 + 量比>1.5（N/M 可配置）"""
+        trig = _risk("quality", "oversold_trigger", default={"min_consecutive_drops": 3, "max_rsi": 30})
+        drops = int(trig.get("min_consecutive_drops", 3))
+        max_rsi = float(trig.get("max_rsi", 30))
         bars = self.bars[symbol]
         closes = [b["close"] for b in bars]
         if len(closes) < 16:
             return None
-        # 连跌3日（近3日日收益均<0）
-        for i in range(1, 4):
+        # 连跌 N 日（近 N 日日收益均<0）
+        for i in range(1, drops + 1):
             if closes[-i] >= closes[-i - 1]:
                 return None
-        # RSI < 30
+        # RSI < max_rsi
         rsi = _compute_rsi(closes)
-        if rsi is None or rsi >= 30:
+        if rsi is None or rsi >= max_rsi:
             return None
         # 阳线
         if bars[-1]["close"] <= bars[-1]["open"]:
@@ -425,7 +447,7 @@ class ReboundEngine:
         vr = _compute_volume_ratio([b["volume"] for b in bars])
         if vr is None or vr <= 1.5:
             return None
-        return f"连跌3日 RSI{rsi:.0f}<30 阳线 量比{vr:.1f}>1.5"
+        return f"连跌{drops}日 RSI{rsi:.0f}<{max_rsi:.0f} 阳线 量比{vr:.1f}>1.5"
 
     def _strong_triggers(self, symbol: str) -> Optional[str]:
         """反包族触发（任一命中）: 徐翔式 / 赵老哥式 / 作手新一式"""
@@ -483,6 +505,14 @@ class ReboundEngine:
                 f["volume_dry"] = vr  # 越小越缩量
                 prev5_low = min(b["low"] for b in bars[-6:-1]) if len(bars) >= 6 else closes[-1]
                 f["stabilize"] = 1.0 if closes[-1] > prev5_low else 0.0
+                # 反弹弹性（AlphaReversal 启发）: 近20日最大单日涨幅 / 最大单日跌幅绝对值
+                gains, losses = [], []
+                for i in range(1, min(21, len(closes))):
+                    r = closes[-i] / closes[-i - 1] - 1.0
+                    (gains if r > 0 else losses).append(abs(r))
+                max_gain = max(gains) if gains else 0.0
+                max_loss = max(losses) if losses else 0.0
+                f["bounce_elasticity"] = (max_gain / max_loss) if max_loss > 0 else 0.5
             else:
                 f["limit_up_streak"] = float(_consecutive_limit_up(bars, _get_limit_pct(sym, self.names.get(sym, ""))))
                 f["volume_accel"] = _compute_volume_ratio(vols) or 1.0

@@ -9,8 +9,7 @@
   - 前视剔除: 无 K7_*（本回测不用基本面因子）；板块仅当日截面；北向不用
 """
 
-from __future__ import annotations
-
+# ── 路径 ─────────────────────────────────────────────
 import os
 import sys
 from collections import defaultdict
@@ -19,13 +18,24 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# 仓库根：从模块位置向上找到含 config/rebound_risk.yaml 的目录（兼容 src/ 布局）
+def _find_repo_root() -> Path:
+    env_dir = os.environ.get("NOUS_CONFIG_DIR", "")
+    if env_dir and (Path(env_dir) / "rebound_risk.yaml").exists():
+        return Path(env_dir).parent
+    cur = Path(__file__).resolve()
+    for _ in range(6):
+        if (cur / "config" / "rebound_risk.yaml").exists():
+            return cur
+        cur = cur.parent
+    return cur
+
+PROJECT_ROOT = _find_repo_root()
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import yaml
-
 import numpy as np
+import yaml
 
 from nous.data.storage import get_db
 from nous.engine.screening.rebound import (
@@ -261,8 +271,9 @@ class ReboundBacktest:
             return
         max_picks = int(RISK.get("position", {}).get("max_daily_picks", 5))
         min_score = float(RISK.get("quality", {}).get("min_score", 0.0))
-        # 质量门槛（降换手，对抗费用拖累）→ 排序后取单日 ≤max_picks 只
-        picks = [c for c in result.candidates if c.score >= min_score][:max_picks]
+        allowed = RISK.get("quality", {}).get("families", ["oversold", "strong"])
+        # 质量门槛（降换手，对抗费用拖累）→ 族过滤 → 排序后取单日 ≤max_picks 只
+        picks = [c for c in result.candidates if c.family in allowed and c.score >= min_score][:max_picks]
         nxt_bars = self._slice_bars(nxt)
         # 买入价：验收=次日开盘（P6）；诊断=s信号日收盘（违反 P6，仅定位追高）
         entry_mode = getattr(self, "entry_mode", "next_open")
