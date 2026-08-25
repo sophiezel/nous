@@ -196,6 +196,26 @@ def rebound(
 
 
 @app.command()
+def rebound_review(
+    date_from: str = typer.Option("", "--from", "-f", help="只复盘此日期之后的推荐, 默认全部待复盘"),
+):
+    """反弹引擎复盘 — 计算推荐实际收益/胜负（模型退出规则）。"""
+    import time
+    from nous.engine.screening.rebound import review_recommendations
+
+    t0 = time.time()
+    r = review_recommendations(rec_date_from=date_from)
+    console.print(Panel.fit("[bold cyan]Rebound 复盘[/bold cyan]", border_style="cyan"))
+    console.print(f"  复盘: {r['reviewed']} 条 | 赢 {r['wins']} / 输 {r['losses']} | 未成交 {r['skipped_no_trade']}")
+    wr = r['win_rate']
+    console.print(f"  胜率: {wr:.1%}" if wr is not None else "  胜率: —")
+    console.print(f"  累计收益(简单加总): {r['total_pnl_pct']:.2%}\n")
+    if r.get('note'):
+        console.print(f"  [dim]{r['note']}[/dim]")
+    console.print(f"\n  [dim]耗时: {time.time()-t0:.1f}s[/dim]")
+
+
+@app.command()
 def review(
     mode: str = typer.Option("signal", "--mode", "-m", help="signal|market|full"),
     date: str = typer.Option("", "--date", "-d", help="日期, 默认最新交易日"),

@@ -746,6 +746,100 @@ def track_recommendations(res: ReboundResult, conn=None) -> int:
     return n
 
 
+def review_recommendations(rec_date_from: str = "", conn=None) -> dict:
+    """复盘：对 recommendation_track 中 actual_return 为空的记录，按验收模型退出规则计算实际结果。
+
+    规则（与验收模型一致）：
+      - 入场 = 推荐日次日开盘（限价：开盘 > 推荐日收盘×1.05 则未成交 → 跳过）
+      - 首目标 +5% 触及（收盘）→ 赢；第 6 个交易日收盘收益 ≥ +2% → 赢；< +2% → 输
+      - 破买入日低点（止损）→ 输（按止损价计）
+    返回 {reviewed, wins, losses, win_rate, skipped_no_trade, total_pnl_pct}。
+    """
+    own = conn is None
+    if own:
+        conn = get_db(write=False)
+    try:
+        q = "SELECT id, symbol, rec_date FROM recommendation_track WHERE actual_return IS NULL"
+        if rec_date_from:
+            q += " AND rec_date >= ?"
+            rows = conn.execute(q, (rec_date_from,)).fetchall()
+        else:
+            rows = conn.execute(q).fetchall()
+        if not rows:
+            return {"reviewed": 0, "wins": 0, "losses": 0, "win_rate": None,
+                    "skipped_no_trade": 0, "total_pnl_pct": 0.0, "note": "无待复盘记录"}
+        # 取每个 symbol 全量 bars（含推荐日之后）
+        symbols = sorted({r[1] for r in rows})
+        bars: dict[str, list[dict]] = {}
+        for sym in symbols:
+            b = conn.execute(
+                "SELECT trade_date, open, high, low, close FROM stock_daily WHERE symbol=? "
+                "ORDER BY trade_date", (sym,)).fetchall()
+            bars[sym] = [{"date": td, "open": float(o or 0), "high": float(h or 0),
+                          "low": float(l or 0), "close": float(c or 0)} for td, o, h, l, c in b]
+        name_map = {}
+        for sym in symbols:
+            row = conn.execute("SELECT name FROM stock_basic WHERE symbol=?", (sym,)).fetchone()
+            name_map[sym] = row[0] if row else ""
+
+        wins = losses = skipped = 0
+        total_pnl_pct = 0.0
+        reviewed = 0
+        for rid, sym, rec_date in rows:
+            b = bars.get(sym, [])
+            if not b:
+                continue
+            import bisect
+            dates = [x["date"] for x in b]
+            i = bisect.bisect_right(dates, rec_date)
+            if i >= len(b):
+                continue  # 无后续数据
+            sig_close = b[i - 1]["close"] if i > 0 else 0.0
+            entry = b[i]["open"]
+            if entry <= 0:
+                continue
+            # 限价单：次日开盘 > 推荐日收盘×1.05 → 未成交
+            if sig_close > 0 and entry > sig_close * 1.05:
+                conn.execute("UPDATE recommendation_track SET actual_return=0, hit=0, "
+                             "scenarios_json=json_set(COALESCE(scenarios_json,'{}'),'$.review','limit_up_skip') "
+                             "WHERE id=?", (rid,))
+                skipped += 1
+                continue
+            # 买入日低点止损锚点（与验收一致）
+            buy_day_low = b[i]["low"]
+            stop = buy_day_low if (entry - buy_day_low) / entry >= 0.01 else entry * 0.95
+            # 扫描后续 6 个交易日
+            out = None
+            for k in range(i + 1, min(i + 7, len(b))):
+                day = b[k]
+                if day["low"] <= stop:
+                    out = ("loss", stop / entry - 1.0)
+                    break
+                if day["close"] >= entry * 1.05:
+                    out = ("win", 0.05)
+                    break
+            if out is None:
+                last = b[min(i + 6, len(b) - 1)]
+                ret = last["close"] / entry - 1.0
+                out = ("win" if ret >= 0.02 else "loss", ret)
+            pnl_pct = out[1]
+            conn.execute("UPDATE recommendation_track SET actual_return=?, hit=? WHERE id=?",
+                         (round(pnl_pct, 4), 1 if out[0] == "win" else 0, rid))
+            if out[0] == "win":
+                wins += 1
+            else:
+                losses += 1
+            total_pnl_pct += pnl_pct
+            reviewed += 1
+        conn.commit()
+        wr = wins / (wins + losses) if (wins + losses) else None
+        return {"reviewed": reviewed, "wins": wins, "losses": losses, "win_rate": wr,
+                "skipped_no_trade": skipped, "total_pnl_pct": round(total_pnl_pct, 4)}
+    finally:
+        if own:
+            conn.close()
+
+
 if __name__ == "__main__":
     r = run_rebound()
     print(f"regime={r.regime} sentiment={r.sentiment_status} cap={r.position_cap:.0%} "
