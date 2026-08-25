@@ -130,6 +130,72 @@ def screen(
 
 
 @app.command()
+def rebound(
+    top_n: int = typer.Option(20, "--top", "-n", help="显示前N只"),
+    date: str = typer.Option("", "--date", "-d", help="日期, 默认最新交易日"),
+    no_report: bool = typer.Option(False, "--no-report", help="不写每日报告/不写追踪"),
+):
+    """短期反弹选股 (rebound 引擎: 超跌反弹 + 强势回调反包)."""
+    import time
+    from pathlib import Path
+
+    from nous.engine.screening.rebound import (
+        ReboundEngine,
+        render_markdown,
+        track_recommendations,
+    )
+
+    t0 = time.time()
+    _require_market_data()
+    engine = ReboundEngine(report_date=date)
+    try:
+        result = engine.scan()
+        console.print(Panel.fit("[bold cyan]Nous Rebound — 短期反弹选股[/bold cyan]", border_style="cyan"))
+        console.print(
+            f"  日期: {result.report_date} | regime: [bold]{result.regime}[/bold] | "
+            f"情绪: [bold]{result.sentiment_status}[/bold] | 总仓位上限: [bold]{result.position_cap:.0%}[/bold]"
+        )
+        console.print(
+            f"  超跌族: {result.oversold_count} 只 | 反包族: {result.strong_count} 只 | "
+            f"跌停警报: {'⚠️ 降仓' if result.limit_down_alert else '—'}\n"
+        )
+
+        picks = result.top(top_n)
+        if not picks:
+            console.print("  [dim]今日无候选（闸门关闭或无超跌/反包机会）[/dim]")
+        else:
+            family_name = {"oversold": "超跌", "strong": "反包"}
+            table = Table(title=f"候选 TOP{len(picks)}")
+            table.add_column("族", style="cyan")
+            table.add_column("代码", style="cyan")
+            table.add_column("名称")
+            table.add_column("得分", justify="right", style="green")
+            table.add_column("触发", style="dim")
+            table.add_column("止损", justify="right")
+            table.add_column("目标", justify="right")
+            for s in picks:
+                table.add_row(
+                    family_name.get(s.family, s.family), s.symbol, s.name,
+                    f"{s.score:.1f}", s.trigger[:28], f"{s.stop_loss:.2f}", f"{s.take_profit_first:.2f}",
+                )
+            console.print(table)
+
+        if not no_report:
+            import os
+            data_dir = Path(os.path.expanduser(os.environ.get("NOUS_DATA_DIR", "~/nous-data")))
+            rep_dir = data_dir / "reports"
+            rep_dir.mkdir(parents=True, exist_ok=True)
+            report_path = rep_dir / f"rebound_{result.report_date.replace('-', '')}.md"
+            report_path.write_text(render_markdown(result), encoding="utf-8")
+            n = track_recommendations(result)
+            console.print(f"\n  [dim]报告: {report_path} | 已写入追踪: {n} 条[/dim]")
+
+        console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
+    finally:
+        engine.close()
+
+
+@app.command()
 def review(
     mode: str = typer.Option("signal", "--mode", "-m", help="signal|market|full"),
     date: str = typer.Option("", "--date", "-d", help="日期, 默认最新交易日"),

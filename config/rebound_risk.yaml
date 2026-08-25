@@ -1,0 +1,43 @@
+# 短期反弹引擎 — 风控配置（规格: 2026-08-24-rebound-risk-gate-design.md #9）
+
+rebound:
+  risk:
+    hard_filter:
+      min_daily_amount_5d: 50000000   # F4 流动性：近5日日均成交额 >= 5000万
+      min_listing_days: 60            # F5 上市天数（用 stock_daily_all 最早 trade_date 近似）
+      allow_20pct_board: true         # F6 20%涨跌幅标的（创业板/科创/北交所）默认参与
+
+    stop_loss:
+      atr_multiplier: 2.0             # 超跌族 ATR 兜底倍数（config 现有值）
+      day_low_min_buffer: 0.01        # 买入日最低价距买入价 <1% 时放宽到 ATR 兜底
+      strong_family_pct: 0.05         # 反包族：买入价 -5%
+
+    take_profit:
+      oversold_first: 0.05            # 超跌族首目标 +5%（方新侠原版）
+      strong_first: 0.08              # 反包族首目标 +8%
+      trail_drawdown: 0.04            # 移动止盈：收盘创新高后回撤 4%
+      partial: 0.5                    # 到首目标出 1/2
+
+    time_stop:
+      oversold_days: 5                # 超跌族持有 5 日
+      strong_days: 3                  # 反包族持有 3 日
+      min_gain: 0.02                  # 累计收益 < +2% 即走
+
+    position:
+      max_single_pct: 0.15            # 单票 <= 15%
+      max_sector_pct: 0.30            # 单板块 <= 30%
+      max_daily_picks: 5              # 单日建仓 <= 5 只
+
+    gate:
+      regime_position_limit:          # 第一层：regime 总仓位上限（复用 market_regime 规则）
+        BULL: 0.90
+        SIDEWAYS: 0.60
+        VOLATILE: 0.30
+        BEAR: 0.20
+      sentiment_thresholds:           # 第二层：情绪 gate（sentiment_cache.score）
+        hot: 75
+        warm: 60
+        cool: 40
+      block_oversold_regimes: ["BEAR", "VOLATILE"]   # 接飞刀禁区
+      block_strong_sentiment: ["cold", "cool"]       # 反包族仅在 hot/warm
+      exit_limit_down_count: 200      # 第三层：单日跌停家数 > 200 → 降仓 50%

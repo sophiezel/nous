@@ -1,0 +1,29 @@
+# 短期反弹引擎 — 权重配置（规格: 2026-08-24-rebound-weight-calibration-design.md #8）
+# 两信号族分权重；线性排序分只含 超跌/量能/资金/板块（情绪/宏观=gate、财报=硬过滤）
+
+rebound:
+  weights:
+    oversold:                 # 超跌反弹族（合计 100）
+      ret_5d: 30              # K1_ret_5d 5日收益（越负越好）
+      price_position_20: 20   # 20日区间位置（越低越超跌）
+      ma_gap_20: 15           # MA20 乖离（负乖离越大越好）
+      stabilize: 5            # 企稳确认（不再创新低/下影线，加分项）
+      volume_dry: 20          # 缩量衰竭（量/5日均量<0.7，抛压枯竭）
+      lhb_net: 7              # 龙虎榜净买（近5日，lhb_daily）
+      sector_heat: 3          # 板块热度（同行业5日平均表现，当日截面）
+    strong:                   # 强势回调反包族（合计 100）
+      limit_up_streak: 40     # 连板数/涨停梯队
+      volume_accel: 30        # 量能加速（量比）
+      lhb_net: 20             # 龙虎榜净买
+      sector_heat: 10         # 板块热度
+
+  calibration:                # 校准记录（两阶段校准：因子层 ICIR + 族层网格，仅校准段）
+    method: "icir + grid"
+    calibration_window: "2020-01-01..2023-12-31"
+    oos_window: "2024-01-01..2026-08-21"
+    constraints:
+      max_single_factor_pct: 40
+      max_deviation_pp: 15
+      min_ic: 0.0
+      min_icir: 0.3
+    status: "initial-values"  # initial-values | calibrated
