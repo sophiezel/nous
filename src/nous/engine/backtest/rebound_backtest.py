@@ -25,6 +25,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import yaml
 
+import numpy as np
+
 from nous.data.storage import get_db
 from nous.engine.screening.rebound import (
     ReboundEngine,
@@ -47,7 +49,6 @@ RISK = _load_risk()
 
 FEE_RATE = 0.003          # 单边 ≈0.3%
 MAX_SINGLE_PCT = 0.15     # 单票 15%
-MAX_DAILY_PICKS = 5       # 单日建仓 ≤5 只
 REGIME_CAP = {"BULL": 0.90, "SIDEWAYS": 0.60, "VOLATILE": 0.30, "BEAR": 0.20}
 BLOCK_OVERSOLD_REGIMES = ("BEAR", "VOLATILE")
 BLOCK_STRONG_SENTIMENT = ("cold", "cool")
@@ -258,14 +259,24 @@ class ReboundBacktest:
             return
         if not result.candidates:
             return
-        # 排序后取单日 ≤5 只
-        picks = result.candidates[:MAX_DAILY_PICKS]
+        max_picks = int(RISK.get("position", {}).get("max_daily_picks", 5))
+        min_score = float(RISK.get("quality", {}).get("min_score", 0.0))
+        # 质量门槛（降换手，对抗费用拖累）→ 排序后取单日 ≤max_picks 只
+        picks = [c for c in result.candidates if c.score >= min_score][:max_picks]
         nxt_bars = self._slice_bars(nxt)
-        open_prices = {sym: (b[-1]["open"] if b and b[-1]["date"] == nxt else 0.0)
-                       for sym, b in nxt_bars.items()}
-        prev_close = {sym: (b[-2]["close"] if len(b) >= 2 else 0.0)
-                      for sym, b in nxt_bars.items()}
+        # 买入价：验收=次日开盘（P6）；诊断=s信号日收盘（违反 P6，仅定位追高）
+        entry_mode = getattr(self, "entry_mode", "next_open")
+        if entry_mode == "signal_close":
+            buy_bars = self._slice_bars(day)
+            open_prices = {sym: (b[-1]["close"] if b else 0.0) for sym, b in buy_bars.items()}
+            prev_close = {}
+        else:
+            open_prices = {sym: (b[-1]["open"] if b and b[-1]["date"] == nxt else 0.0)
+                           for sym, b in nxt_bars.items()}
+            prev_close = {sym: (b[-2]["close"] if len(b) >= 2 else 0.0)
+                          for sym, b in nxt_bars.items()}
         cash_per = self.cash * MAX_SINGLE_PCT
+        chase_cap = float(RISK.get("quality", {}).get("entry_chase_cap", 0.0))  # 0=不限价
         for sig in picks:
             if sig.symbol in self.positions:
                 continue
@@ -273,9 +284,14 @@ class ReboundBacktest:
             pc = prev_close.get(sig.symbol, 0.0)
             if op <= 0:
                 continue
+            # 限价单模型：次日开盘 > 信号日收盘×(1+cap) 则不成交（拒绝追高；无后视镜，限价单合法）
+            if chase_cap > 0 and entry_mode == "next_open":
+                sig_close = day_bars.get(sig.symbol, [{}])[-1].get("close", 0) if day_bars.get(sig.symbol) else 0
+                if sig_close > 0 and op > sig_close * (1 + chase_cap):
+                    continue
             limit = _get_limit_pct(sig.symbol, sig.name)
-            # 次日触板不可成交（P3）
-            if pc > 0 and _is_limit_up(op, pc, limit):
+            # 次日触板不可成交（P3）；诊断模式跳过此检查
+            if entry_mode == "next_open" and pc > 0 and _is_limit_up(op, pc, limit):
                 continue
             cost = op * (1 + FEE_RATE)
             if cost <= 0 or cash_per < cost:
@@ -288,10 +304,10 @@ class ReboundBacktest:
             total_cap = self.initial_capital * REGIME_CAP.get(result.regime, 0.6)
             if used + shares * cost > total_cap:
                 continue
-            # 买入日低点/ATR 止损锚点
-            nxt_bars_sym = nxt_bars.get(sig.symbol, [])
-            buy_day_low = min(b["low"] for b in nxt_bars_sym) if nxt_bars_sym else op
-            buy_day_atr = _compute_atr(nxt_bars_sym) or op * 0.03
+            # 买入日低点/ATR 止损锚点（验收=次日，诊断=信号日）
+            anchor_bars = nxt_bars.get(sig.symbol, []) if entry_mode == "next_open" else day_bars.get(sig.symbol, [])
+            buy_day_low = min(b["low"] for b in anchor_bars) if anchor_bars else op
+            buy_day_atr = _compute_atr(anchor_bars) or op * 0.03
             atr_mult = RISK.get("stop_loss", {}).get("atr_multiplier", 2.0)
             day_low_buffer = RISK.get("stop_loss", {}).get("day_low_min_buffer", 0.01)
             if sig.family == "oversold":
@@ -299,7 +315,7 @@ class ReboundBacktest:
                 if (op - buy_day_low) / op < day_low_buffer:
                     stop = op - buy_day_atr * atr_mult
             else:
-                ma20 = _compute_ma([b["close"] for b in nxt_bars_sym], 20) or op
+                ma20 = _compute_ma([b["close"] for b in anchor_bars], 20) or op
                 strong_pct = RISK.get("stop_loss", {}).get("strong_family_pct", 0.05)
                 stop = min(op * (1 - strong_pct), ma20)
             self.cash -= shares * cost
@@ -409,13 +425,14 @@ class ReboundBacktest:
         del self.positions[pos.symbol]
 
     def _sell_half(self, pos: Position, day: str, px: float, reason: str) -> None:
-        half = pos.shares // 2
-        if half < 100:
+        ratio = RISK.get("take_profit", {}).get("partial", 0.5) if reason == "take_first" else 0.5
+        sell = int(pos.shares * ratio / 100) * 100
+        if sell < 100:
             return
-        proceeds = half * px * (1 - FEE_RATE)
-        pnl = proceeds - half * pos.cost
+        proceeds = sell * px * (1 - FEE_RATE)
+        pnl = proceeds - sell * pos.cost
         self.cash += proceeds
-        pos.shares -= half
+        pos.shares -= sell
         self.closed.append(ClosedTrade(
             symbol=pos.symbol, family=pos.family, entry_date=pos.entry_date, exit_date=day,
             entry_price=pos.entry_price, exit_price=px, pnl=pnl,
@@ -450,9 +467,22 @@ class ReboundBacktest:
                 peak = e["equity"]
             dd = (peak - e["equity"]) / peak if peak > 0 else 0.0
             mdd = max(mdd, dd)
+        # 简单年化 Sharpe（校准目标，规格 #8 §6）
+        rets = []
+        for i in range(1, len(self.equity)):
+            e0, e1 = self.equity[i - 1]["equity"], self.equity[i]["equity"]
+            if e0 > 0:
+                rets.append(e1 / e0 - 1.0)
+        sharpe = 0.0
+        if len(rets) > 2:
+            arr = np.asarray(rets)
+            sd = float(np.std(arr))
+            if sd > 0:
+                sharpe = float(np.mean(arr)) / sd * (252 ** 0.5)
         final_equity = self.equity[-1]["equity"] if self.equity else self.initial_capital
         return {
             "window": f"{self.start}..{self.end}",
+            "sharpe": round(sharpe, 3),
             "n_trade_days": len(self.trade_dates),
             "n_closed": len(self.closed),
             "n_open": len(self.positions),
@@ -478,9 +508,34 @@ class ReboundBacktest:
         }
 
 
-def run_backtest(start: str, end: str, initial_capital: float = 1_000_000.0) -> dict:
-    bt = ReboundBacktest(start, end, initial_capital)
-    return bt.run()
+def run_backtest(start: str, end: str, initial_capital: float = 1_000_000.0,
+                 risk: Optional[dict] = None, weights: Optional[dict] = None,
+                 fee_rate: Optional[float] = None,
+                 entry_mode: str = "next_open") -> dict:
+    """
+    risk/weights: 覆盖参数（校准迭代用）。临时替换模块全局，跑完恢复。
+    risk = rebound_risk.yaml 的 rebound.risk 段；weights = rebound_weights.yaml 的 rebound.weights 段。
+    fee_rate: 费用覆盖（诊断用；验收固定 0.3%）。
+    entry_mode: "next_open"(验收纪律) | "signal_close"(诊断用，违反 P6，仅定位追高问题)。
+    """
+    import nous.engine.screening.rebound as rmod
+    saved_risk_r, saved_w = rmod.RISK, rmod.WEIGHTS
+    saved_risk_b, saved_fee = RISK, FEE_RATE
+    if risk is not None:
+        rmod.RISK = risk
+        globals()["RISK"] = risk
+    if weights is not None:
+        rmod.WEIGHTS = weights
+    if fee_rate is not None:
+        globals()["FEE_RATE"] = fee_rate
+    try:
+        bt = ReboundBacktest(start, end, initial_capital)
+        bt.entry_mode = entry_mode
+        return bt.run()
+    finally:
+        rmod.RISK, rmod.WEIGHTS = saved_risk_r, saved_w
+        globals()["RISK"] = saved_risk_b
+        globals()["FEE_RATE"] = saved_fee
 
 
 if __name__ == "__main__":
