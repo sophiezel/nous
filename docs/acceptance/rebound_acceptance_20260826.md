@@ -1,6 +1,6 @@
 # Rebound 引擎回测验收报告 — 2024-01-01 ~ 2026-08-21
 
-> 生成时间: 2026-08-26 06:53 | 规格: 2026-08-24-rebound-backtest-acceptance-design.md (#6)
+> 生成时间: 2026-08-26 07:25 | 规格: 2026-08-24-rebound-backtest-acceptance-design.md (#6)
 
 **总体判定: ✅ 验收通过**
 
@@ -46,11 +46,11 @@
 | 退出 | 笔数 |
 |---|---|
 | market_exit | 1 |
-| take_first | 21 |
-| time | 9 |
-| stop | 23 |
 | market_half | 3 |
+| stop | 23 |
+| time | 9 |
 | trail | 19 |
+| take_first | 21 |
 
 ## 4. 基线对比
 

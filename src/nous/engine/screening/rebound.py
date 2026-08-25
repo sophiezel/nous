@@ -200,7 +200,7 @@ def _consecutive_limit_up(bars: list[dict], limit: float) -> int:
 # ══════════════════════════════════════════════════════
 
 class ReboundEngine:
-    def __init__(self, report_date: str = "", n_bars: int = 40, memory: Optional[dict] = None):
+    def __init__(self, report_date: str = "", n_bars: int = 45, memory: Optional[dict] = None):
         """
         memory=None: DB 模式（读 screener.db）。
         memory=dict: 内存模式（回测用），键:
@@ -214,6 +214,7 @@ class ReboundEngine:
         self.names: dict[str, str] = {}
         self.lhb_net5: dict[str, float] = {}
         self.sector_heat: dict[str, float] = {}
+        self.industry_ret60: dict[str, float] = {}
         self.total_mv: dict[str, float] = {}
         self.listing_dates: dict[str, str] = {}
         self._industry_map: Optional[dict] = None
@@ -363,6 +364,19 @@ class ReboundEngine:
                 cnts[sec] += 1
         sec_mean = {s: sums[s] / cnts[s] for s in sums if cnts[s] > 0}
         self.sector_heat = {sym: sec_mean.get(self._get_industry(sym, day), 0.0) for sym in ret5}
+        # 行业 60 日收益（周期位置：行业处于高位还是低位）
+        ret60: dict[str, float] = {}
+        for sym, bars in self.bars.items():
+            if len(bars) >= 61 and bars[-1]["close"] > 0 and bars[-61]["close"] > 0:
+                ret60[sym] = bars[-1]["close"] / bars[-61]["close"] - 1.0
+        sums60, cnts60 = defaultdict(float), defaultdict(int)
+        for sym in ret60:
+            sec = self._get_industry(sym, day)
+            if sec:
+                sums60[sec] += ret60[sym]
+                cnts60[sec] += 1
+        sec60_mean = {s: sums60[s] / cnts60[s] for s in sums60 if cnts60[s] > 0}
+        self.industry_ret60 = {sym: sec60_mean.get(self._get_industry(sym, day), 0.0) for sym in ret60}
 
     def _load_sector_heat(self) -> None:
         self._compute_sector_heat()
@@ -556,6 +570,8 @@ class ReboundEngine:
                 f["stabilize"] = 1.0 if closes[-1] > prev5_low else 0.0
                 # 融资余额 5 日变化率（资金面: 杠杆资金是否在进场）
                 f["margin_chg5"] = self._margin_chg5(sym, bars[-1]["date"])
+                # 行业周期位置：行业 60 日收益（越高=行业在高位，越低=行业在低位）
+                f["industry_ret60"] = getattr(self, "industry_ret60", {}).get(sym, 0.0)
                 # 反弹弹性（AlphaReversal 启发）: 近20日最大单日涨幅 / 最大单日跌幅绝对值
                 gains, losses = [], []
                 for i in range(1, min(21, len(closes))):
@@ -784,7 +800,7 @@ class ReboundEngine:
         labels = {
             "oversold": {"ret_5d": "5日跌幅", "price_position_20": "20日低位", "ma_gap_20": "偏离20日线",
                          "volume_dry": "缩量", "stabilize": "企稳", "margin_chg5": "融资余额变化",
-                         "bounce_elasticity": "反弹弹性",
+                         "industry_ret60": "行业周期位置", "bounce_elasticity": "反弹弹性",
                          "lhb_net": "龙虎榜净买", "sector_heat": "板块热度"},
             "strong": {"limit_up_streak": "连板高度", "volume_accel": "放量",
                         "lhb_net": "龙虎榜净买", "sector_heat": "板块热度"},
