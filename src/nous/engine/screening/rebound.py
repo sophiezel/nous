@@ -220,8 +220,8 @@ class ReboundEngine:
         if memory is not None:
             self._init_memory(memory, report_date)
         else:
-            self.report_date = report_date or self._latest_date()
             self.conn = get_db(write=False)
+            self.report_date = report_date or self._latest_date()
             self._load()
 
     def _init_memory(self, memory: dict, report_date: str) -> None:
