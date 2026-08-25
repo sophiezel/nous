@@ -557,7 +557,9 @@ class ReboundEngine:
         res.limit_down_alert = self._get_limit_down_count(self.report_date) > _risk(
             "gate", "exit_limit_down_count", default=200)
 
-        # 闸门开关
+        # 闸门开关 + 族过滤（校准配置：超跌族-only）
+        families = _risk("quality", "families", default=["oversold", "strong"])
+        min_score = float(_risk("quality", "min_score", default=0.0))
         block_oversold = res.regime in _risk("gate", "block_oversold_regimes", default=["BEAR", "VOLATILE"])
         block_strong = res.sentiment_status in _risk("gate", "block_strong_sentiment", default=["cold", "cool"])
 
@@ -576,11 +578,11 @@ class ReboundEngine:
             if not self._pass_listing_days(symbol):
                 res.skipped["F5_listing"] = res.skipped.get("F5_listing", 0) + 1
                 continue
-            if not block_oversold:
+            if "oversold" in families and not block_oversold:
                 t = self._oversold_trigger(symbol)
                 if t:
                     oversold_pool.append((symbol, t))
-            if not block_strong:
+            if "strong" in families and not block_strong:
                 t = self._strong_triggers(symbol)
                 if t:
                     strong_pool.append((symbol, t))
@@ -611,6 +613,7 @@ class ReboundEngine:
             res.strong_count = len(strong_pool)
 
         res.candidates.sort(key=lambda s: s.score, reverse=True)
+        res.candidates = [c for c in res.candidates if c.score >= min_score]
         res.candidates = res.candidates[: _risk("position", "max_daily_picks", default=5) * 4]
         return res
 
