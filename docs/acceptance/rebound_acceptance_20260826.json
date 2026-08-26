@@ -25,11 +25,11 @@
     },
     "reasons": {
       "market_exit": 1,
-      "take_first": 21,
-      "time": 9,
-      "stop": 23,
       "market_half": 3,
-      "trail": 19
+      "stop": 23,
+      "time": 9,
+      "trail": 19,
+      "take_first": 21
     },
     "trusted": true
   },

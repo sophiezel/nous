@@ -1,0 +1,111 @@
+{
+  "chain": "post-close",
+  "as_of": "2026-08-25",
+  "ok": false,
+  "elapsed_s": 1878.92,
+  "stopped_at": "S3",
+  "stages": [
+    {
+      "name": "S1",
+      "ok": true,
+      "message": "10/13 collectors ok",
+      "elapsed_s": 1204.18,
+      "details": {
+        "batch": {
+          "ok": true,
+          "message": "10/13 collectors ok",
+          "elapsed_s": 1107.55,
+          "details": {
+            "daily": "ok",
+            "fundamental": "ok",
+            "index": "ok",
+            "global-index": "ok",
+            "margin": "ok",
+            "hsgt": "ok",
+            "lhb": "error",
+            "fund-flow": "error",
+            "etf-flow": "error",
+            "futures": "ok",
+            "sentiment": "ok",
+            "block-trade": "ok",
+            "futures-basis": "ok"
+          }
+        },
+        "cross": {
+          "ok": false,
+          "message": "cross-validate done",
+          "elapsed_s": 96.52,
+          "result": {
+            "ok": false,
+            "date": "2026-08-21",
+            "checked": 50,
+            "errors": [
+              {
+                "symbol": "300308",
+                "reason": "收盘价差异9.9%"
+              },
+              {
+                "symbol": "300502",
+                "reason": "收盘价差异26.7%"
+              },
+              {
+                "symbol": "300394",
+                "reason": "收盘价差异27.0%"
+              },
+              {
+                "symbol": "688256",
+                "reason": "收盘价差异16.1%"
+              },
+              {
+                "symbol": "000725",
+                "reason": "收盘价差异5.3%"
+              },
+              {
+                "symbol": "601138",
+                "reason": "收盘价差异5.7%"
+              },
+              {
+                "symbol": "300759",
+                "reason": "收盘价差异28.4%"
+              }
+            ],
+            "warnings": []
+          }
+        },
+        "gap": {
+          "ok": true,
+          "message": "gap-detector done",
+          "elapsed_s": 0.1
+        }
+      }
+    },
+    {
+      "name": "S2",
+      "ok": true,
+      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-08-21.parquet",
+      "elapsed_s": 515.52,
+      "details": {
+        "elapsed_s": 515.52
+      }
+    },
+    {
+      "name": "S3",
+      "ok": false,
+      "message": "P0=fail P1=ok",
+      "elapsed_s": 159.19,
+      "details": {
+        "p0_ok": false,
+        "p1_ok": true,
+        "degraded": [],
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-08-25/FRESHNESS_REPORT.md",
+        "failed": [
+          {
+            "key": "integrity_ohlcv",
+            "priority": "P0",
+            "detail": "2026-08-24: 行=0, 无效OHLC=0 (0.0%)"
+          }
+        ]
+      }
+    }
+  ]
+}
