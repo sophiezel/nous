@@ -1,0 +1,132 @@
+{
+  "chain": "post-close",
+  "as_of": "2026-09-10",
+  "ok": false,
+  "elapsed_s": 2277.74,
+  "stopped_at": "S4",
+  "stages": [
+    {
+      "name": "S1",
+      "ok": true,
+      "message": "10/13 collectors ok",
+      "elapsed_s": 1431.11,
+      "details": {
+        "batch": {
+          "ok": true,
+          "message": "10/13 collectors ok",
+          "elapsed_s": 1332.7,
+          "details": {
+            "daily": "ok",
+            "fundamental": "ok",
+            "index": "ok",
+            "global-index": "ok",
+            "margin": "ok",
+            "hsgt": "ok",
+            "lhb": "error",
+            "fund-flow": "error",
+            "etf-flow": "error",
+            "futures": "ok",
+            "sentiment": "ok",
+            "block-trade": "ok",
+            "futures-basis": "ok"
+          }
+        },
+        "cross": {
+          "ok": false,
+          "message": "cross-validate done",
+          "elapsed_s": 98.24,
+          "result": {
+            "ok": false,
+            "date": "2026-09-10",
+            "checked": 50,
+            "errors": [
+              {
+                "symbol": "300308",
+                "reason": "收盘价差异15.0%"
+              },
+              {
+                "symbol": "300394",
+                "reason": "收盘价差异28.1%"
+              },
+              {
+                "symbol": "300502",
+                "reason": "收盘价差异31.9%"
+              },
+              {
+                "symbol": "688256",
+                "reason": "收盘价差异15.3%"
+              },
+              {
+                "symbol": "000021",
+                "reason": "收盘价差异14.6%"
+              }
+            ],
+            "warnings": [
+              {
+                "symbol": "000636",
+                "reason": "差异2.4%"
+              },
+              {
+                "symbol": "000725",
+                "reason": "差异4.2%"
+              },
+              {
+                "symbol": "601138",
+                "reason": "差异4.1%"
+              }
+            ]
+          }
+        },
+        "gap": {
+          "ok": true,
+          "message": "gap-detector done",
+          "elapsed_s": 0.16
+        }
+      }
+    },
+    {
+      "name": "S2",
+      "ok": true,
+      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-09-10.parquet",
+      "elapsed_s": 754.75,
+      "details": {
+        "elapsed_s": 754.75
+      }
+    },
+    {
+      "name": "S3",
+      "ok": true,
+      "message": "P0=ok P1=ok",
+      "elapsed_s": 91.08,
+      "details": {
+        "p0_ok": true,
+        "p1_ok": true,
+        "degraded": [],
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-10/FRESHNESS_REPORT.md",
+        "failed": []
+      }
+    },
+    {
+      "name": "S4",
+      "ok": false,
+      "message": "recommend=fail; review=ok",
+      "elapsed_s": 0.8,
+      "details": {
+        "recommend": {
+          "ok": false,
+          "message": "skipped",
+          "elapsed_s": 0.13,
+          "result": {
+            "status": "skipped"
+          }
+        },
+        "review": {
+          "ok": true,
+          "message": "review 2026-09-10 score=67.0",
+          "elapsed_s": 0.66,
+          "verdict": "信号一般，谨慎参与"
+        }
+      }
+    }
+  ]
+}

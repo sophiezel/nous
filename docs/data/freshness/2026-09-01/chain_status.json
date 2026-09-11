@@ -1,0 +1,279 @@
+{
+  "chain": "post-close",
+  "as_of": "2026-09-01",
+  "ok": true,
+  "elapsed_s": 2268.37,
+  "stopped_at": null,
+  "stages": [
+    {
+      "name": "S1",
+      "ok": true,
+      "message": "10/13 collectors ok",
+      "elapsed_s": 1374.38,
+      "details": {
+        "batch": {
+          "ok": true,
+          "message": "10/13 collectors ok",
+          "elapsed_s": 1277.49,
+          "details": {
+            "daily": "ok",
+            "fundamental": "ok",
+            "index": "ok",
+            "global-index": "ok",
+            "margin": "ok",
+            "hsgt": "ok",
+            "lhb": "error",
+            "fund-flow": "error",
+            "etf-flow": "error",
+            "futures": "ok",
+            "sentiment": "ok",
+            "block-trade": "ok",
+            "futures-basis": "ok"
+          }
+        },
+        "cross": {
+          "ok": false,
+          "message": "cross-validate done",
+          "elapsed_s": 96.61,
+          "result": {
+            "ok": false,
+            "date": "2026-09-01",
+            "checked": 50,
+            "errors": [
+              {
+                "symbol": "000100",
+                "reason": "收盘价差异16.8%"
+              },
+              {
+                "symbol": "000021",
+                "reason": "收盘价差异14.5%"
+              },
+              {
+                "symbol": "000001",
+                "reason": "收盘价差异99.7%"
+              },
+              {
+                "symbol": "000059",
+                "reason": "收盘价差异31.5%"
+              },
+              {
+                "symbol": "000060",
+                "reason": "收盘价差异13.4%"
+              },
+              {
+                "symbol": "000011",
+                "reason": "收盘价差异18.0%"
+              },
+              {
+                "symbol": "000034",
+                "reason": "收盘价差异14.5%"
+              },
+              {
+                "symbol": "000157",
+                "reason": "收盘价差异9.5%"
+              },
+              {
+                "symbol": "000065",
+                "reason": "收盘价差异19.4%"
+              },
+              {
+                "symbol": "000027",
+                "reason": "收盘价差异16.3%"
+              },
+              {
+                "symbol": "000035",
+                "reason": "收盘价差异5.4%"
+              },
+              {
+                "symbol": "000036",
+                "reason": "收盘价差异25.8%"
+              },
+              {
+                "symbol": "000037",
+                "reason": "收盘价差异5.2%"
+              },
+              {
+                "symbol": "000153",
+                "reason": "收盘价差异10.3%"
+              }
+            ],
+            "warnings": []
+          }
+        },
+        "gap": {
+          "ok": true,
+          "message": "gap-detector done",
+          "elapsed_s": 0.27
+        }
+      }
+    },
+    {
+      "name": "S2",
+      "ok": true,
+      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-09-01.parquet",
+      "elapsed_s": 597.73,
+      "details": {
+        "elapsed_s": 597.73
+      }
+    },
+    {
+      "name": "S3",
+      "ok": true,
+      "message": "P0=ok P1=ok",
+      "elapsed_s": 126.6,
+      "details": {
+        "p0_ok": true,
+        "p1_ok": true,
+        "degraded": [
+          "hsgt_stock_daily"
+        ],
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-01/FRESHNESS_REPORT.md",
+        "failed": [
+          {
+            "key": "hsgt_stock_daily",
+            "priority": "P1",
+            "detail": "最新=2026-08-20, 交易日滞后=7 (阈值≤3)"
+          }
+        ]
+      }
+    },
+    {
+      "name": "S4",
+      "ok": true,
+      "message": "recommend=ok; review=ok",
+      "elapsed_s": 169.35,
+      "details": {
+        "recommend": {
+          "ok": true,
+          "message": "daily-recommend done",
+          "elapsed_s": 169.1,
+          "result": {
+            "status": "ok",
+            "elapsed": 168.98327231407166,
+            "summary": {
+              "date": "2026-09-02",
+              "generated_at": "2026-09-01T17:17:47.923099",
+              "market": {
+                "sh_index": {
+                  "close": 3986.3,
+                  "change_pct": 0.86
+                },
+                "sz_index": {
+                  "close": 14015.0,
+                  "change_pct": 0.44
+                },
+                "hk_hsi": {
+                  "close": 25566.99,
+                  "change_pct": -0.07
+                }
+              },
+              "market_regime": "SIDEWAYS",
+              "data_freshness": {
+                "stock_daily_latest": "2026-09-01",
+                "lag_days": 0
+              },
+              "picks_summary": {
+                "A": {
+                  "long": {
+                    "count": 15,
+                    "top5_symbols": [
+                      "600869",
+                      "600110",
+                      "002466",
+                      "601869",
+                      "002536"
+                    ],
+                    "top5_names": [
+                      "远东股份",
+                      "诺德股份",
+                      "天齐锂业",
+                      "长飞光纤",
+                      "飞龙股份"
+                    ]
+                  },
+                  "short": {
+                    "count": 15,
+                    "top5_symbols": [
+                      "600613",
+                      "601609",
+                      "601700",
+                      "600127",
+                      "300189"
+                    ],
+                    "top5_names": [
+                      "神奇制药",
+                      "金田股份",
+                      "风范股份",
+                      "金健米业",
+                      "神农种业"
+                    ]
+                  }
+                },
+                "HK": {
+                  "long": {
+                    "count": 10,
+                    "top5_symbols": [
+                      "01357",
+                      "06969",
+                      "01888",
+                      "00179",
+                      "00012"
+                    ],
+                    "top5_names": [
+                      "01357",
+                      "06969",
+                      "01888",
+                      "00179",
+                      "00012"
+                    ]
+                  },
+                  "short": {
+                    "count": 10,
+                    "top5_symbols": [
+                      "00688",
+                      "06969",
+                      "03986",
+                      "01208",
+                      "02416"
+                    ],
+                    "top5_names": [
+                      "00688",
+                      "06969",
+                      "03986",
+                      "01208",
+                      "02416"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "review": {
+          "ok": true,
+          "message": "review 2026-09-01 score=65.0",
+          "elapsed_s": 0.25,
+          "verdict": "信号一般，谨慎参与"
+        }
+      }
+    },
+    {
+      "name": "S5",
+      "ok": true,
+      "message": "observe done",
+      "elapsed_s": 0.31,
+      "details": {
+        "health": {
+          "ok": true,
+          "message": "health-dashboard done",
+          "elapsed_s": 0.24
+        },
+        "quality": {
+          "ok": true,
+          "message": "quality-report done",
+          "elapsed_s": 0.07
+        }
+      }
+    }
+  ]
+}

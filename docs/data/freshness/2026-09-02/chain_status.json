@@ -1,0 +1,119 @@
+{
+  "chain": "post-close",
+  "as_of": "2026-09-02",
+  "ok": false,
+  "elapsed_s": 2075.6,
+  "stopped_at": "S4",
+  "stages": [
+    {
+      "name": "S1",
+      "ok": true,
+      "message": "10/13 collectors ok",
+      "elapsed_s": 1473.99,
+      "details": {
+        "batch": {
+          "ok": true,
+          "message": "10/13 collectors ok",
+          "elapsed_s": 1377.3,
+          "details": {
+            "daily": "ok",
+            "fundamental": "ok",
+            "index": "ok",
+            "global-index": "ok",
+            "margin": "ok",
+            "hsgt": "ok",
+            "lhb": "error",
+            "fund-flow": "error",
+            "etf-flow": "error",
+            "futures": "ok",
+            "sentiment": "ok",
+            "block-trade": "ok",
+            "futures-basis": "ok"
+          }
+        },
+        "cross": {
+          "ok": false,
+          "message": "cross-validate done",
+          "elapsed_s": 96.54,
+          "result": {
+            "ok": false,
+            "date": "2026-09-02",
+            "checked": 50,
+            "errors": [
+              {
+                "symbol": "300308",
+                "reason": "收盘价差异21.5%"
+              },
+              {
+                "symbol": "300502",
+                "reason": "收盘价差异35.9%"
+              },
+              {
+                "symbol": "300394",
+                "reason": "收盘价差异33.2%"
+              },
+              {
+                "symbol": "688256",
+                "reason": "收盘价差异10.1%"
+              },
+              {
+                "symbol": "601138",
+                "reason": "收盘价差异7.3%"
+              }
+            ],
+            "warnings": []
+          }
+        },
+        "gap": {
+          "ok": true,
+          "message": "gap-detector done",
+          "elapsed_s": 0.15
+        }
+      }
+    },
+    {
+      "name": "S2",
+      "ok": true,
+      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-09-02.parquet",
+      "elapsed_s": 489.35,
+      "details": {
+        "elapsed_s": 489.35
+      }
+    },
+    {
+      "name": "S3",
+      "ok": true,
+      "message": "P0=ok P1=ok",
+      "elapsed_s": 111.68,
+      "details": {
+        "p0_ok": true,
+        "p1_ok": true,
+        "degraded": [],
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-02/FRESHNESS_REPORT.md",
+        "failed": []
+      }
+    },
+    {
+      "name": "S4",
+      "ok": false,
+      "message": "recommend=fail; review=ok",
+      "elapsed_s": 0.57,
+      "details": {
+        "recommend": {
+          "ok": false,
+          "message": "skipped",
+          "elapsed_s": 0.08,
+          "result": {
+            "status": "skipped"
+          }
+        },
+        "review": {
+          "ok": true,
+          "message": "review 2026-09-02 score=69.0",
+          "elapsed_s": 0.49,
+          "verdict": "信号一般，谨慎参与"
+        }
+      }
+    }
+  ]
+}
