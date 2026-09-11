@@ -1,0 +1,31 @@
+{
+  "edge_rows": 1571,
+  "symbols_in_edges": 403,
+  "focus_pool_size": 1809,
+  "focus_symbols_covered": 172,
+  "focus_coverage_ratio": 0.0951,
+  "focus_internal_edges": 648,
+  "relation_distribution": {
+    "supplier": 946,
+    "competitor": 625
+  },
+  "source_distribution": {
+    "brainmap": 1571
+  },
+  "brainmap_nodes": 565,
+  "brainmap_unlabeled_industry": 313,
+  "brainmap_unlabeled_ratio": 0.554,
+  "isolated_nodes_removed": 162,
+  "quality_risks": {
+    "copyright": "README 声明数据自有版权，与 MIT 冲突；仅作研究种子，商用需谨慎",
+    "snapshot": "单快照 2026-06-15，无历史/PIT",
+    "coverage": "~10% A股，偏科技/新能源链",
+    "noise": "存在可疑 competitor 边，需因子验证阶段过滤"
+  },
+  "concept_proxy_recommendation": "概念共享度可作弱边代理（competitor, weight=0.3），补充 brainmap 未覆盖的聚焦链股票对；默认不落库，--add-concept-proxy 启用",
+  "raw_edges": 1782,
+  "clean_edges_brainmap": 1571,
+  "concept_proxy_edges": 0,
+  "snapshot_date": "2026-06-15",
+  "nodes_in_source": 565
+}

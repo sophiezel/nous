@@ -1,0 +1,157 @@
+{
+  "total_rows": 2058,
+  "other_ratio": 0.6618,
+  "zygc_coverage": 0.9922,
+  "by_chain_segment": [
+    {
+      "chain_name": "AI",
+      "segment": "其他",
+      "cnt": 563
+    },
+    {
+      "chain_name": "AI",
+      "segment": "软件应用",
+      "cnt": 49
+    },
+    {
+      "chain_name": "AI",
+      "segment": "显示面板",
+      "cnt": 37
+    },
+    {
+      "chain_name": "AI",
+      "segment": "光通信",
+      "cnt": 32
+    },
+    {
+      "chain_name": "AI",
+      "segment": "机器人",
+      "cnt": 32
+    },
+    {
+      "chain_name": "AI",
+      "segment": "算力硬件",
+      "cnt": 12
+    },
+    {
+      "chain_name": "AI",
+      "segment": "数据中心",
+      "cnt": 10
+    },
+    {
+      "chain_name": "AI",
+      "segment": "智能驾驶",
+      "cnt": 2
+    },
+    {
+      "chain_name": "医药",
+      "segment": "其他",
+      "cnt": 332
+    },
+    {
+      "chain_name": "医药",
+      "segment": "创新药",
+      "cnt": 56
+    },
+    {
+      "chain_name": "医药",
+      "segment": "医疗器械",
+      "cnt": 31
+    },
+    {
+      "chain_name": "医药",
+      "segment": "生物制品",
+      "cnt": 16
+    },
+    {
+      "chain_name": "医药",
+      "segment": "中药",
+      "cnt": 14
+    },
+    {
+      "chain_name": "医药",
+      "segment": "CXO",
+      "cnt": 6
+    },
+    {
+      "chain_name": "医药",
+      "segment": "医疗服务",
+      "cnt": 5
+    },
+    {
+      "chain_name": "半导体",
+      "segment": "其他",
+      "cnt": 116
+    },
+    {
+      "chain_name": "半导体",
+      "segment": "制造",
+      "cnt": 68
+    },
+    {
+      "chain_name": "半导体",
+      "segment": "材料",
+      "cnt": 17
+    },
+    {
+      "chain_name": "半导体",
+      "segment": "封测",
+      "cnt": 11
+    },
+    {
+      "chain_name": "半导体",
+      "segment": "设备",
+      "cnt": 5
+    },
+    {
+      "chain_name": "半导体",
+      "segment": "设计",
+      "cnt": 4
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "其他",
+      "cnt": 351
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "整车应用",
+      "cnt": 85
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "电力运营",
+      "cnt": 58
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "电池",
+      "cnt": 57
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "光伏",
+      "cnt": 40
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "材料",
+      "cnt": 19
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "风电",
+      "cnt": 18
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "储能",
+      "cnt": 8
+    },
+    {
+      "chain_name": "新能源",
+      "segment": "上游资源",
+      "cnt": 4
+    }
+  ]
+}
