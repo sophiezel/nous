@@ -507,6 +507,8 @@ def _data_health():
 
 def _data_freshness():
     """Comprehensive data freshness audit."""
+    import re
+
     from nous.data.storage import get_db
     from datetime import date, datetime
 
@@ -516,20 +518,32 @@ def _data_freshness():
 
     tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
     results = []
+    skipped = 0
+    ident = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
     for (tname,) in tables:
-        cols = conn.execute(f"PRAGMA table_info({tname})").fetchall()
+        # 标识符来自 sqlite_master，仍加白名单校验后再拼入 SQL
+        if not ident.match(str(tname) or ""):
+            continue
+        cols = conn.execute(  # nosemgrep: sqlalchemy-execute-raw-query - 标识符已白名单校验
+            f'PRAGMA table_info("{tname}")'
+        ).fetchall()
         date_cols = [c[1] for c in cols if 'date' in c[1].lower() or c[1] in ('trade_date','snapshot_date','entry_date','exit_date')]
         if not date_cols or tname.startswith('sqlite_') or 'stock_daily_' in tname:
             continue
         for col in date_cols:
+            if not ident.match(str(col) or ""):
+                continue
             try:
-                r = conn.execute(f"SELECT MAX({col}), COUNT(*) FROM [{tname}]").fetchone()
+                r = conn.execute(
+                    f'SELECT MAX("{col}"), COUNT(*) FROM "{tname}"'
+                ).fetchone()  # nosemgrep: sqlalchemy-execute-raw-query - 同上
                 if r and r[1] and r[1] > 0:
                     lag = (today - date.fromisoformat(r[0])).days if r[0] else 999
                     results.append((tname, r[0] or 'N/A', r[1], lag))
                 break
-            except:
-                pass
+            except Exception as exc:  # noqa: BLE001 - 单表探测失败不应中断整轮审计
+                skipped += 1
+                console.print(f"  [dim]跳过 {tname}.{col}: {type(exc).__name__}[/dim]")
 
     results.sort(key=lambda x: -x[3])
 
@@ -545,7 +559,7 @@ def _data_freshness():
         console.print(f"  {status} [{color}]{tname:<32}[/{color}] {str(latest):<14} {rows:>8,}行  {lag:>4}d滞后")
 
     stale = sum(1 for _, _, _, lag in results if lag > 7)
-    console.print(f"\n  [dim]{len(results)}数据源, {stale}个滞后(>7d)[/dim]")
+    console.print(f"\n  [dim]{len(results)}数据源, {stale}个滞后(>7d)" + (f", {skipped}个探测失败" if skipped else "") + "[/dim]")
     conn.close()
 
 
