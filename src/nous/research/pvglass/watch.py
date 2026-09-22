@@ -189,6 +189,13 @@ def _save_state(conn: sqlite3.Connection, items: list[WatchItem], now: str,
         row["key"]: row
         for row in conn.execute("SELECT key, status, changed_at FROM watch_state")
     }
+    # 写前先清孤儿：字典里删掉的信号/条件/观察项不该在表里留着。
+    # 留着不会误报（比较只遍历当前 items），但表会越攒越乱，
+    # 且残留的旧阈值会让人误以为它还在生效。
+    current_keys = {item.key for item in items}
+    stale = [key for key in existing if key not in current_keys]
+    if stale:
+        conn.executemany("DELETE FROM watch_state WHERE key = ?", [(k,) for k in stale])
     n = 0
     for item in items:
         prev = existing.get(item.key)

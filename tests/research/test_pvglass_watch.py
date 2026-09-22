@@ -191,6 +191,32 @@ def test_watch_keys_are_stable_across_runs(conn, registry):
     assert a == b
 
 
+def test_removing_item_from_config_prunes_orphan_state(conn, registry):
+    """字典里删掉观察项后，状态表不应留下孤儿键（否则旧阈值看着还在生效）。
+
+    这个用例来自一次真实发现：从 watch: 段删掉 W3_inventory_40 后，
+    库里旧基线仍留着 `watch:W3_...` 行（不会误报，但表会越攒越乱）。
+    """
+    import dataclasses
+
+    watch.check(conn, registry)  # 基线：含 watch: 段
+    before = conn.execute(
+        "SELECT COUNT(*) FROM watch_state WHERE key LIKE 'watch:%'"
+    ).fetchone()[0]
+    assert before > 0
+
+    out = watch.check(conn, dataclasses.replace(registry, watch=()))
+
+    after = conn.execute(
+        "SELECT COUNT(*) FROM watch_state WHERE key LIKE 'watch:%'"
+    ).fetchone()[0]
+    assert after == 0, "孤儿状态没被清掉"
+    assert all(not i.key.startswith("watch:") for i in out.items)
+    # 清孤儿不应该被当成“跃迁”→ 不该推送
+    assert out.changes == []
+    assert out.alerted is False
+
+
 # ── 推送文案 ───────────────────────────────────────────────────────────
 def test_push_body_marks_baseline_run(conn, registry):
     out = watch.check(conn, registry)
