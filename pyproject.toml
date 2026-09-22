@@ -110,3 +110,12 @@ select = ["E", "F", "W", "I", "N", "B", "SIM"]
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true
+
+# 让静态分析器能找到 src/ 布局下的 nous.* 包
+# （editable install 只写了 .pth，pyright 不读 .pth，需要显式 extraPaths）
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+extraPaths = ["src"]
+pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv"
