@@ -1063,9 +1063,11 @@ def meituan(
         rep_dir.mkdir(parents=True, exist_ok=True)
         report_path = rep_dir / f"meituan_{result.as_of.replace('-', '')}.md"
         report_path.write_text(render_markdown(result), encoding="utf-8")
-        console.print(f"\n  [dim]报告: {report_path}[/dim]")
+        if not json_out:
+            console.print(f"\n  [dim]报告: {report_path}[/dim]")
 
-    console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
+    if not json_out:
+        console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
 
 
 
@@ -1206,8 +1208,10 @@ def right_side_cmd(
         rep.mkdir(parents=True, exist_ok=True)
         path = rep / f"right_side_{res.as_of.replace('-', '')}.md"
         path.write_text(render_markdown(res), encoding="utf-8")
-        console.print(f"\n  [dim]报告: {path}[/dim]")
-    console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
+        if not json_out:
+            console.print(f"\n  [dim]报告: {path}[/dim]")
+    if not json_out:
+        console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
 
 
 

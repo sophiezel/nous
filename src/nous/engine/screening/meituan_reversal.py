@@ -631,14 +631,14 @@ def compose(layers: list[LayerScore]) -> Optional[float]:
 
 
 def run_meituan_reversal(
-    as_of: str = "",
+    as_of: str | None = "",
     demo: bool = False,
     config_name: str = "meituan_reversal.yaml",
 ) -> MeituanReversalResult:
     cfg = load_config(config_name)
     symbol = cfg["symbol"]
     name = cfg.get("name", symbol)
-    as_of_n = as_of.strip() or None
+    as_of_n = (as_of or "").strip() or None
     notes: list[str] = []
 
     if demo:
