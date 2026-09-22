@@ -59,28 +59,42 @@ PRICE_RANGES: dict[str, tuple[float, float]] = {
     "module_price_topcon": (0.4, 3.0),  # 元/W
 }
 
-#: 产品词。同一句里“组件/电池/娃片”的价格量级差很多，命中错词就等于取错价。
-PRODUCT_NOUNS: tuple[str, ...] = ("组件", "电池", "娃片")
+#: 产品词。同一句里“组件/电池/硅片”的价格量级差很多，命中错词就等于取错价。
+PRODUCT_NOUNS: tuple[str, ...] = ("组件", "电池", "硅片")
 
 #: 各指标**不允许**出现在数字之前的最近产品词（串味则跳过）。
 CONFLICT_NOUNS: dict[str, tuple[str, ...]] = {
     "wafer_price_182": ("组件", "电池"),
-    "cell_price_182": ("组件", "娃片"),
-    "module_price_topcon": ("电池", "娃片"),
+    "cell_price_182": ("组件", "硅片"),
+    "module_price_topcon": ("电池", "硅片"),
+}
+
+#: 一个指标在同一篇文章里可能出现多个同类价（如硅料：致密料/颗粒硅/混包料）。
+#: 指标名写了“致密料”，就得优先取致密料，而不是“正文里第一个 X 元/kg”。
+PREFERRED_NOUNS: dict[str, tuple[str, ...]] = {
+    "polysilicon_price": ("致密料",),
 }
 
 #: 数字前面是“涨跌幅/差值”语境 —— 这类句子里的数字是变化量，不是价格。
 #: 实测坑：“价格较上周继续降低0.01元/W”“拍价相较主流水平低0.005元/W”。
+#:
+#: 注意 **不允许**动词后面跟“至/到/为”：那是**目标价位**
+#:（“致密料报价已上调至40元/kg”里的 40 就是价格）。早期把 `至` 写成可选尾巴，
+#: 导致致密料价位被判为变化量、跌落到同一句里的**颗粒硅**价（40→38、43→41 两处真实回归）。
 _DELTA_TAIL_RE = re.compile(
     r"(?:较|比)[^，。；\n]{0,12}?(?:上周|上期|上月|前周|前期|主流水平|主流价)"
     r"|环比|同比"
-    r"|(?:降低|下降|下跌|上涨|上调|下调|减少|增加|提升|回落|松动|降|涨|跌|高|低)\s*(?:了|约|至|到|为)?\s*$"
+    r"|(?:降低|下降|下跌|上涨|上调|下调|减少|增加|提升|回落|松动|降|涨|跌)[了约]?\s*$"
 )
-
 
 #: 句边界。回搜产品词必须限制在本句内，否则会把上一句的“电池片”当成
 #: 本句“TOPCon报价”的归属词，从而误杀干净样本（实测过）。
 _CLAUSE_BOUNDARY = "。；;！？\n"
+
+
+def _clause_start(text: str, pos: int) -> int:
+    """pos 所在句子的起始下标（逗号不算句界）。"""
+    return max(text.rfind(ch, 0, pos) for ch in _CLAUSE_BOUNDARY) + 1
 
 
 def _looks_like_delta(text: str, pos: int, window: int = 28) -> bool:
@@ -90,7 +104,7 @@ def _looks_like_delta(text: str, pos: int, window: int = 28) -> bool:
 
 def _nearest_product_noun(text: str, pos: int) -> str | None:
     """数字之前**本句内**最近的产品词（决定这个数字到底是谁的价格）。"""
-    start = max(text.rfind(ch, 0, pos) for ch in _CLAUSE_BOUNDARY) + 1
+    start = _clause_start(text, pos)
     best: tuple[int, str] | None = None
     for noun in PRODUCT_NOUNS:
         at = text.rfind(noun, start, pos)
@@ -124,21 +138,26 @@ def discover_latest_article(fetcher: Fetcher, index_url: str = DEFAULT_INDEX) ->
 def extract(text: str) -> dict[str, dict[str, Any]]:
     """正文 → 链价指标。
 
-    每层都要过三道闸，任一不过就跳过这个匹配、继续找下一个：
+    每层都要过四道闸，任一不过就跳过这个匹配、继续找下一个：
 
-    1. **不是涨跌幅** —— “较上周继续降低0.01元/W”里的 0.01 是变化量；
-    2. **产品词不串味** —— 数字前最近的产品词不能是别的环节（组件≠电池≠娃片）；
-    3. **量纲在区间内** —— 价格 / 库存的合理上下限，防单位错位与脏值。
+    1. **不是涨跌幅** —— “较上周继续降低0.01元/W”里的 0.01 是变化量，
+       但“上调至40元/kg”里的 40 是目标价位，不能当变化量误杀；
+    2. **产品词不串味** —— 数字前**本句内**最近的产品词不能是别的环节（组件≠电池≠硅片）；
+    3. **量纲在区间内** —— 价格 / 库存的合理上下限，防单位错位与脏值；
+    4. **优先取指标名指的那个价** —— 如“致密料”优先于同句的颗粒硅/混包料。
 
-    宁可跳过、不猜：三道闸都过不了的正文就不产出观测，
+    宁可跳过、不猜：过不了闸的正文就不产出观测，
     与 ``report_pdf`` 的 sanity 校验同一原则。
     """
     found: dict[str, dict[str, Any]] = {}
     for indicator_id, patterns in PRICE_PATTERNS.items():
         rng = PRICE_RANGES.get(indicator_id)
         conflicts = CONFLICT_NOUNS.get(indicator_id, ())
+        preferred = PREFERRED_NOUNS.get(indicator_id, ())
+        # 汇总**所有**过闸候选，再按“指名词”优先级挑一个；
+        # 不提前 break：否则“先出现的颗粒硅”会遮蔽后面的“致密料”。
+        candidates: list[tuple[float, str, bool]] = []
         for pattern in patterns:
-            hit: dict[str, Any] | None = None
             for m in re.finditer(pattern, text):
                 groups = [g for g in m.groups() if g]
                 value = to_float(groups[0])
@@ -155,11 +174,15 @@ def extract(text: str) -> dict[str, dict[str, Any]]:
                     continue
                 if rng is not None and not rng[0] <= value <= rng[1]:
                     continue
-                hit = {"value": value, "raw": m.group(0).strip()[:120]}
-                break
-            if hit:
-                found[indicator_id] = hit
-                break
+                clause = text[_clause_start(text, at) : at]
+                candidates.append(
+                    (value, m.group(0).strip()[:120], any(n in clause for n in preferred))
+                )
+        if not candidates:
+            continue
+        # 有指名词的命中优先；否则回退为“第一个 pattern 的第一个匹配”（保持原优先级）
+        pick = next((c for c in candidates if c[2]), candidates[0])
+        found[indicator_id] = {"value": pick[0], "raw": pick[1]}
     return found
 
 

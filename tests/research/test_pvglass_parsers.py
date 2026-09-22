@@ -125,6 +125,54 @@ def test_trendforce_product_noun_lookup():
     assert energytrend._nearest_product_noun(text, pos) == "电池"
 
 
+def test_trendforce_product_noun_table_is_not_typoed():
+    """产品词表里必须是「硅片」。写成别的字会让整条防串味规则静默失效（真发生过）。"""
+    assert "娃片" in energytrend.PRODUCT_NOUNS or "硅片" in energytrend.PRODUCT_NOUNS
+    assert "硅片" in energytrend.PRODUCT_NOUNS, "PRODUCT_NOUNS 丢了「硅片」→ 防线失效"
+    for indicator_id, nouns in energytrend.CONFLICT_NOUNS.items():
+        for noun in nouns:
+            assert noun in energytrend.PRODUCT_NOUNS, (
+                f"{indicator_id} 的排斥词 {noun!r} 不在 PRODUCT_NOUNS 里，永远不可能命中"
+            )
+
+
+def test_trendforce_rejects_wafer_contamination():
+    """硅片的价格不得被当成电池/组件价（娃片 typo 就是在这条上失效的）。"""
+    assert "cell_price_182" not in energytrend.extract(
+        "183硅片成交价格已接近0.30元/W。"
+    )
+    assert "module_price_topcon" not in energytrend.extract(
+        "硅片环节未涨价，TOPCon报价约0.71元/W。"
+    )
+    assert "wafer_price_182" not in energytrend.extract(
+        "组件端，183、210R、210成交均价约1.02元/片。"
+    )
+
+
+# ── 回归：目标价位不得被当成变化量（真实回归：40→38、43→41）──────────
+# 原文（20260813-148348）：致密料报价已上调至 40 元/kg，颗粒硅报价至 38 元/kg
+# 原文（20260827-148462）：一线厂商致密料试探性报价上调至 43，颗粒硅报价行至 41
+# 指标是「多晶硅致密料成交价」→ 应取 40 / 43，而不是句里第一个出现的价。
+TRENDFORCE_DENSIFIED = (
+    "受政策预期影响，部分头部企业致密料报价已上调至40元/kg，颗粒硅报价至38元/kg。"
+)
+
+
+def test_trendforce_target_price_is_not_treated_as_delta():
+    """“上调至 40 元/kg”里的 40 是目标价位，不能当变化量误杀。"""
+    found = energytrend.extract(TRENDFORCE_DENSIFIED)
+    assert found["polysilicon_price"]["value"] == 40.0
+
+
+def test_trendforce_prefers_named_grade_regardless_of_order():
+    """指标名指的是致密料：即使颗粒硅先出现，也必须取致密料价。"""
+    assert energytrend.extract(
+        "协鑫颗粒硅报价至38元/kg，通威致密料报价已上调至40元/kg。"
+    )["polysilicon_price"]["value"] == 40.0
+    # 全句只有颗粒硅时不应凭空造出致密料价，但也不能丢：回退取该句第一个合理价
+    assert energytrend.extract("协鑫颗粒硅报价至38元/kg。")["polysilicon_price"]["value"] == 38.0
+
+
 def test_trendforce_event_rules_match_only_relevant_titles():
     titles = [
         "信义、福莱特牵头，光伏玻璃龙头企业联合减产",
