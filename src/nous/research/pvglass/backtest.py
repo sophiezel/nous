@@ -249,25 +249,53 @@ def run(
 BOOTSTRAP_SYMBOLS: dict[str, tuple[str, str]] = {
     "xinyi_price": ("00968", "hk"),
     "flat_glass_price": ("601865", "a"),
+    # 同业/子公司：没有历史价就无法做横截面（谁跌得多、H/A 折价、控股折价）
+    "flat_glass_price_h": ("06865", "hk"),
+    "xenergy_price": ("03868", "hk"),
 }
 
 
+def _sina_a_symbol(symbol: str) -> str:
+    """A 股代码 → 新浪代码（需交易所前缀）。"""
+    if symbol.startswith(("6", "9")):
+        return f"sh{symbol}"
+    if symbol.startswith(("0", "2", "3")):
+        return f"sz{symbol}"
+    return f"bj{symbol}"
+
+
 def _fetch_history(symbol: str, market: str, start: str) -> list[tuple[str, float]]:
-    """akshare 历史收盘价（新浪口径，避免东财 ProxyError）。"""
+    """akshare 历史收盘价。
+
+    A 股**优先新浪** `stock_zh_a_daily`，东财 `stock_zh_a_hist` 仅作兜底：
+    实测东财推 `push2his.eastmoney.com` 在本机会 `ProxyError`，而旧实现只走东财、
+    失败还被上层静默吞掉，直接导致 flat_glass_price 历史为 0 条。
+    与 `sources/akshare_quote.py` 采用的顺序保持一致。
+    """
     import akshare as ak
 
     if market == "hk":
         df = ak.stock_hk_daily(symbol=symbol, adjust="")
         rows = [(str(r["date"])[:10], _to_float(r["close"])) for _, r in df.iterrows()]
     else:
-        df = ak.stock_zh_a_hist(
-            symbol=symbol,
-            period="daily",
-            start_date=start.replace("-", ""),
-            end_date=date.today().strftime("%Y%m%d"),
-            adjust="",
-        )
-        rows = [(str(r["日期"])[:10], _to_float(r["收盘"])) for _, r in df.iterrows()]
+        end = date.today().strftime("%Y%m%d")
+        try:
+            df = ak.stock_zh_a_daily(
+                symbol=_sina_a_symbol(symbol),
+                start_date=start.replace("-", ""),
+                end_date=end,
+                adjust="",
+            )
+            rows = [(str(r["date"])[:10], _to_float(r["close"])) for _, r in df.iterrows()]
+        except Exception:  # noqa: BLE001 - 新浪不可用时才退东财
+            df = ak.stock_zh_a_hist(
+                symbol=symbol,
+                period="daily",
+                start_date=start.replace("-", ""),
+                end_date=end,
+                adjust="",
+            )
+            rows = [(str(r["日期"])[:10], _to_float(r["收盘"])) for _, r in df.iterrows()]
     return [(day, close) for day, close in rows if day >= start and close is not None]
 
 
@@ -277,16 +305,24 @@ def bootstrap_prices(
     *,
     start: str = "2016-01-01",
     symbols: dict[str, tuple[str, str]] | None = None,
+    notes: list[str] | None = None,
 ) -> dict[str, int]:
-    """把历史收盘价灌入 obs（source=akshare_hist，与日常快照互不覆盖）。"""
+    """把历史收盘价灌入 obs（source=akshare_hist，与日常快照互不覆盖）。
+
+    单标的失败不影响其他标的，但**不再静默** —— 失败原因写入 ``notes``（若提供）。
+    """
     written: dict[str, int] = {}
     for indicator_id, (symbol, market) in (symbols or BOOTSTRAP_SYMBOLS).items():
         if indicator_id not in registry.indicators:
+            if notes is not None:
+                notes.append(f"{indicator_id}: 指标未在字典中声明，跳过")
             continue
         try:
             rows = _fetch_history(symbol, market, start)
-        except Exception:  # noqa: BLE001 - 网络失败不影响其他标的
+        except Exception as exc:  # noqa: BLE001 - 网络失败不影响其他标的
             written[indicator_id] = 0
+            if notes is not None:
+                notes.append(f"{indicator_id}({symbol}): 取数失败 {type(exc).__name__}: {exc}")
             continue
         unit = registry.indicators[indicator_id].unit
         n = 0
