@@ -632,6 +632,24 @@ indicators:
     source: manual
     bias: up_bullish
     note: 约0.6x，历史极低；国金以此为安全边际论据
+  - id: xinyi_short_ratio
+    name: 信义沽空占成交比
+    group: valuation
+    unit: "%"
+    freq: daily
+    auto: manual
+    source: manual
+    bias: up_bearish
+    note: etnet 公司卖空页。2026-08-03~09-22 均值 26.61%（主板同期均值 19.94%，福莱特H 21.28%）
+  - id: xinyi_southbound_hold
+    name: 信义南向持股
+    group: valuation
+    unit: 股
+    freq: daily
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: 港交所沪港通持股纪录(00968)。2026-09-21 为 1,432,298,714 股 / 15.64%
   - id: consensus_np_fy2026
     name: 一致预期 归母(FY2026)
     group: valuation
