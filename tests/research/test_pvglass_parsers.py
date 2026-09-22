@@ -69,6 +69,62 @@ def test_trendforce_extract_chain_prices():
     assert found["module_price_topcon"]["value"] == 0.71  # 0.70-0.72 中点
 
 
+# ── 回归：涨跌幅当成价格 / 产品词串味（2026-09 实测脏值）──────────────
+# 这三行来自真实回填产出，note 里的原文本就是下面这些句子：
+#   cell_price_182     2026-07-30 = 0.01   ← “较上周继续降低0.01元/W”（变化量）
+#   cell_price_182     2026-08-06 = 0.005  ← “相较主流水平低0.005元/W”（差值）
+#   module_price_topcon 2025-08-01 = 0.285 ← “TOPCon电池…为0.285元/W”（串到了电池）
+TRENDFORCE_DIRTY = """
+本周国内光伏玻璃市场报价总体持稳，成交清淡。
+183mm TOPCon双面双玻组件价格较上周继续降低0.01元/W。
+183尺寸价格相较主流水平低0.005元/W，下游拿货意愿不强。
+多晶硅方面，TOPCon电池主流成交价为0.285元/W，环比持平。
+"""
+
+
+def test_trendforce_rejects_delta_as_price():
+    """“较上周降低 X 元/W”里的 X 是变化量，不得当成电池价格。"""
+    found = energytrend.extract(TRENDFORCE_DIRTY)
+    assert "cell_price_182" not in found
+    assert "module_price_topcon" not in found
+
+
+def test_trendforce_rejects_cross_product_contamination():
+    """电池的价不得写成组件（反之亦然）：数字前最近的产品词决定归属。"""
+    # 只有电池出现 → 组件指标必须为空
+    assert "module_price_topcon" not in energytrend.extract(
+        "多晶硅方面，TOPCon电池主流成交价为0.285元/W。"
+    )
+    # 只有组件出现 → 电池指标必须为空
+    assert "cell_price_182" not in energytrend.extract(
+        "组件端，183双玻组件成交价格为0.65元/W。"
+    )
+
+
+def test_trendforce_extracts_both_products_from_same_article():
+    """同一篇文章里两个产品都有价：各归各位，不互相抵销。"""
+    found = energytrend.extract(
+        "当前电池片价格继续下跌，183、210R成交价格已接近0.30元/W。\n"
+        "组件端，头部企业TOPCon报价约0.70-0.72元/W。\n"
+    )
+    assert found["cell_price_182"]["value"] == 0.30
+    assert found["module_price_topcon"]["value"] == 0.71
+
+
+def test_trendforce_rejects_out_of_range_value():
+    """量纲区间兜底：即使前三道闸都过了，越界值也不写库。"""
+    lo, hi = energytrend.PRICE_RANGES["polysilicon_inventory"]
+    assert lo > 0 and hi > lo  # 区间必须单调且为正
+    # 硅料库存 0.3 万吨显然不合理（真实量级 ~54）
+    assert "polysilicon_inventory" not in energytrend.extract("硅料库存0.3万吨。")
+
+
+def test_trendforce_product_noun_lookup():
+    text = "当前电池片价格继续下跌，183、210R成交价已达到0.30元/W。"
+    pos = text.index("0.30")
+    assert energytrend._nearest_product_noun(text, pos) == "电池"
+
+
 def test_trendforce_event_rules_match_only_relevant_titles():
     titles = [
         "信义、福莱特牵头，光伏玻璃龙头企业联合减产",

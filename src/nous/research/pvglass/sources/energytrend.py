@@ -48,6 +48,58 @@ PRICE_PATTERNS: dict[str, list[str]] = {
     ],
 }
 
+#: 量纲合理区间（下限, 上限）。抽错宁可跳过 —— 与 report_pdf 的 sanity 同一原则。
+#: 越界说明正则吃到的是涨跌幅/单价单位不同的数字，而不是该指标的价格。
+PRICE_RANGES: dict[str, tuple[float, float]] = {
+    "polysilicon_inventory": (5.0, 200.0),  # 万吨
+    "wafer_inventory": (1.0, 200.0),  # GW
+    "polysilicon_price": (20.0, 500.0),  # 元/kg
+    "wafer_price_182": (0.4, 5.0),  # 元/片
+    "cell_price_182": (0.15, 2.0),  # 元/W
+    "module_price_topcon": (0.4, 3.0),  # 元/W
+}
+
+#: 产品词。同一句里“组件/电池/娃片”的价格量级差很多，命中错词就等于取错价。
+PRODUCT_NOUNS: tuple[str, ...] = ("组件", "电池", "娃片")
+
+#: 各指标**不允许**出现在数字之前的最近产品词（串味则跳过）。
+CONFLICT_NOUNS: dict[str, tuple[str, ...]] = {
+    "wafer_price_182": ("组件", "电池"),
+    "cell_price_182": ("组件", "娃片"),
+    "module_price_topcon": ("电池", "娃片"),
+}
+
+#: 数字前面是“涨跌幅/差值”语境 —— 这类句子里的数字是变化量，不是价格。
+#: 实测坑：“价格较上周继续降低0.01元/W”“拍价相较主流水平低0.005元/W”。
+_DELTA_TAIL_RE = re.compile(
+    r"(?:较|比)[^，。；\n]{0,12}?(?:上周|上期|上月|前周|前期|主流水平|主流价)"
+    r"|环比|同比"
+    r"|(?:降低|下降|下跌|上涨|上调|下调|减少|增加|提升|回落|松动|降|涨|跌|高|低)\s*(?:了|约|至|到|为)?\s*$"
+)
+
+
+#: 句边界。回搜产品词必须限制在本句内，否则会把上一句的“电池片”当成
+#: 本句“TOPCon报价”的归属词，从而误杀干净样本（实测过）。
+_CLAUSE_BOUNDARY = "。；;！？\n"
+
+
+def _looks_like_delta(text: str, pos: int, window: int = 28) -> bool:
+    """数字前一小段是否处于“变化量”语境。"""
+    return bool(_DELTA_TAIL_RE.search(text[max(0, pos - window) : pos]))
+
+
+def _nearest_product_noun(text: str, pos: int) -> str | None:
+    """数字之前**本句内**最近的产品词（决定这个数字到底是谁的价格）。"""
+    start = max(text.rfind(ch, 0, pos) for ch in _CLAUSE_BOUNDARY) + 1
+    best: tuple[int, str] | None = None
+    for noun in PRODUCT_NOUNS:
+        at = text.rfind(noun, start, pos)
+        if at < 0:
+            continue
+        if best is None or at > best[0]:
+            best = (at, noun)
+    return best[1] if best else None
+
 #: 供给侧事件关键词 → 事件类指标
 EVENT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("glass_capacity_restart", ("点火", "复产", "投产")),
@@ -70,22 +122,44 @@ def discover_latest_article(fetcher: Fetcher, index_url: str = DEFAULT_INDEX) ->
 
 
 def extract(text: str) -> dict[str, dict[str, Any]]:
+    """正文 → 链价指标。
+
+    每层都要过三道闸，任一不过就跳过这个匹配、继续找下一个：
+
+    1. **不是涨跌幅** —— “较上周继续降低0.01元/W”里的 0.01 是变化量；
+    2. **产品词不串味** —— 数字前最近的产品词不能是别的环节（组件≠电池≠娃片）；
+    3. **量纲在区间内** —— 价格 / 库存的合理上下限，防单位错位与脏值。
+
+    宁可跳过、不猜：三道闸都过不了的正文就不产出观测，
+    与 ``report_pdf`` 的 sanity 校验同一原则。
+    """
     found: dict[str, dict[str, Any]] = {}
     for indicator_id, patterns in PRICE_PATTERNS.items():
+        rng = PRICE_RANGES.get(indicator_id)
+        conflicts = CONFLICT_NOUNS.get(indicator_id, ())
         for pattern in patterns:
-            m = re.search(pattern, text)
-            if not m:
-                continue
-            groups = [g for g in m.groups() if g]
-            value = to_float(groups[0])
-            if value is None:
-                continue
-            if indicator_id == "module_price_topcon" and len(groups) >= 2:
-                high = to_float(groups[1])
-                if high is not None:
-                    value = (value + high) / 2
-            found[indicator_id] = {"value": value, "raw": m.group(0).strip()[:120]}
-            break
+            hit: dict[str, Any] | None = None
+            for m in re.finditer(pattern, text):
+                groups = [g for g in m.groups() if g]
+                value = to_float(groups[0])
+                if value is None:
+                    continue
+                if indicator_id == "module_price_topcon" and len(groups) >= 2:
+                    high_v = to_float(groups[1])
+                    if high_v is not None:
+                        value = (value + high_v) / 2
+                at = m.start(1) if m.group(1) is not None else m.start()
+                if _looks_like_delta(text, at):
+                    continue
+                if _nearest_product_noun(text, at) in conflicts:
+                    continue
+                if rng is not None and not rng[0] <= value <= rng[1]:
+                    continue
+                hit = {"value": value, "raw": m.group(0).strip()[:120]}
+                break
+            if hit:
+                found[indicator_id] = hit
+                break
     return found
 
 
