@@ -437,6 +437,12 @@ Q4 装机不确定、印度政策压制海外基地、年末减值风险 —— 
 
 `nous pv signal` 当前：**WATCH，2/7 确认**（S3 需求、S4 供给退出已触发）。
 
+> **本清单已自动化**（`nous pv watch` + 调度任务 `pvglass-watch`，每工作日 18:30）：
+> 逐条件跟踪下表的每一项，**只在状态跃迁时推送**，无变化不打扰。
+> 所以"库存进 40 天以内"这类事件不需要等到下周一——当天就会被发现并推送。
+> 实现见 `src/nous/research/pvglass/watch.py`；阈值配在
+> `config/pvglass_indicators.yaml` 的 `watch:` 段（与 `signals` 同一 schema）。
+
 | 信号 | 阈值 | 当前 | 观察什么 |
 | --- | --- | --- | --- |
 | **S1 玻璃价格** | 2.0mm ≥ 10.5 **且 库存 ≤ 40 天** | **1/2**（价格 ✓；库存 44.7 ✗ —— 现有数据，不再模糊） | 库存能否在 10 月回到 40 天以内 |
@@ -487,6 +493,12 @@ sqlite3 ~/nous-data/pvglass.db \
 
 # 信号判读（本文 §7 的状态来自这里）
 nous pv signal
+
+# 观察清单跃迁告警（§7 已自动化）
+nous pv watch                 # 本轮有无跃迁
+nous pv watch --push          # 有跃迁才推；无跃迁静默
+nous pv watch --dry-run       # 只比较不写库
+nous pv watch --reset-baseline
 
 # 盈利模型三情景 + 敏感性（§3 维度一）
 nous pv xinyi --sens

@@ -21,6 +21,7 @@ nous pv show glass_price_2_0_single
 
 # 拐点信号看板（自动读库判定"是否真的在修复"）
 nous pv signal
+nous pv watch --push
 
 # 信义光能盈利模型（bear/base/bull + 敏感性 + 一致预期对照）
 nous pv xinyi --sens
@@ -109,6 +110,32 @@ nous pv log
 
 > 设计要点：**缺数据不会被当成"未触发"**。`PENDING` 与 `INSUFFICIENT_DATA` 分开，避免"没数据 = 利空"的误判。
 
+### 4.1 观察清单与跃迁告警（`nous pv watch`）
+
+`nous pv signal` 回答"**现在**什么状态"（无记忆）；`nous pv watch` 回答
+"和上次比**变了什么**"。后者才是能天天跑的那个——没变化时只打印一行、**不推送**。
+
+```bash
+nous pv watch                 # 看这一轮有没有跃迁
+nous pv watch --push          # 有跃迁才推（无跃迁静默，不刷屏）
+nous pv watch --dry-run       # 比较但不写库，便于反复试算
+nous pv watch --reset-baseline  # 重建基线（下次运行不告警）
+nous pv watch --json          # 机器可读
+```
+
+观察三档（全部复用 signal 的求值，不另建一套判读）：
+
+| 档 | 键 | 说明 |
+| --- | --- | --- |
+| 信号状态 | `signal:<id>` | triggered / pending / not_triggered / insufficient_data |
+| 信号内每个条件 | `cond:<id>@<indicator>` | **即使信号整体没触发，条件翻面也会报**——这正是"库存进 40 天了但价格还没站稳"这种差一步的时刻 |
+| 独立观察项 | `watch:<id>` | 字典 `watch:` 段的阈值（**不进 verdict**），如"在产日熔量降到 6.5 万吨" |
+
+严重度：`critical` = 有信号刚确认 / 数据补齐后条件直接成立 / watch 项达标；
+其余跃迁为 `info`。推送文案用 🔴/🔵 区分。
+
+**首次运行只建基线、不推送**（否则装完当天会把全部历史状态当成"刚发生的变化"）。
+
 ---
 
 ## 5. 信义光能盈利模型
@@ -173,6 +200,12 @@ nous pv backtest --bootstrap --id S1_glass_price   # 信号是否有前瞻收益
 `===REPORT_START/END===` 块，可直接接现有推送。
 `Makefile` 也提供 `make pv-daily / pv-fetch / pv-signal / pv-digest`。
 
+还注册了 `pvglass-watch`（每个工作日 18:30，港股收盘后）：
+入口 `src/nous/scheduler/jobs/research/pvglass_watch.py`。
+两者分工：**weekly 每周无条件推一份全量周报；watch 只在状态跃迁时才推**。
+watch 不采集任何数据（纯读库、无网络），所以天天跑也不与采集任务抢锁，
+也不会刷屏。基线在首次运行时自动建立。
+
 ---
 
 ## 8. 扩展指南
@@ -182,6 +215,7 @@ nous pv backtest --bootstrap --id S1_glass_price   # 信号是否有前瞻收益
 | 加指标 | `config/pvglass_indicators.yaml → indicators`（必须声明已存在的 `source`） |
 | 加阈值/改判读方向 | 同文件 `bull` / `bear` / `bias`（`up_bearish` = 越低越好） |
 | 加信号 | 同文件 `signals`（算子限 `OPS` 列表；指标必须已定义） |
+| 加观察项（只提醒、不进 verdict） | 同文件 `watch` 段，与 `signals` **同一 schema**，共用一份算子/指标校验 |
 | 加数据源 | 新建 `sources/<name>.py` 实现 `collect(conn, registry, **kw) -> FetchResult`，在 `sources/__init__.py` 的 `_MODULES`/`_FUNCS` 注册 |
 | 改盈利模型 | `config/pvglass_model.yaml`（或 `nous pv xinyi --model <path>` 试算） |
 
