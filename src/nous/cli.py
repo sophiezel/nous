@@ -4,6 +4,7 @@ Usage:
     nous screen    全量筛选
     nous review    鳄鱼派信号复盘
     nous recommend 每日荐股
+    nous meituan   美团多层反转指标
     nous backtest  策略回测
     nous accept    V2 投研验收门禁
     nous data status|health  数据管理
@@ -1011,6 +1012,270 @@ def accept():
 # ═══════════════════════════════════════════════════════════════════════
 # Version
 # ═══════════════════════════════════════════════════════════════════════
+
+@app.command()
+def meituan(
+    date: str = typer.Option("", "--date", "-d", help="截至交易日, 默认最新可用"),
+    json_out: bool = typer.Option(False, "--json", help="输出 JSON"),
+    demo: bool = typer.Option(False, "--demo", help="合成OHLCV通路验证（仍尽量读宏观/资金）"),
+    save: bool = typer.Option(False, "--save", help="写入 ~/nous-data/reports/meituan_*.md"),
+):
+    """美团(03690) 多层反转指标 — 宏观/利率/资金/相对/技术/情绪/基本面。"""
+    import time
+    from pathlib import Path as _Path
+
+    from nous.engine.screening.meituan_reversal import render_markdown, run_meituan_reversal
+
+    t0 = time.time()
+    result = run_meituan_reversal(as_of=date, demo=demo)
+    if json_out:
+        console.print_json(data=result.to_dict())
+    else:
+        console.print(Panel.fit("[bold cyan]Nous Meituan — 多层反转指标[/bold cyan]", border_style="cyan"))
+        console.print(
+            f"  日期: {result.as_of} | {result.name} ({result.symbol}) | "
+            f"收盘: [bold]{result.last_close if result.last_close is not None else 'n/a'}[/bold]"
+        )
+        comp = result.composite
+        console.print(
+            f"  综合分: [bold]{comp if comp is None else f'{comp:.1f}'}[/bold]  "
+            f"信号: [bold]{result.signal}[/bold]  体制: [bold]{result.regime}[/bold]\n"
+        )
+        table = Table(title="分层计分卡 (-100..+100)")
+        table.add_column("层级", style="cyan")
+        table.add_column("分数", justify="right")
+        table.add_column("权重", justify="right", style="dim")
+        table.add_column("说明")
+        for ly in result.layers:
+            sc = f"{ly.score:.1f}" if ly.score is not None else "[dim]skip[/dim]"
+            table.add_row(ly.name, sc, f"{ly.weight:.0f}", ly.skipped_reason or ly.detail)
+        console.print(table)
+        for n in result.notes:
+            console.print(f"  [yellow]{n}[/yellow]")
+        if result.disclaimer:
+            console.print(f"\n  [dim]{result.disclaimer}[/dim]")
+
+    if save:
+        import os
+        data_dir = _Path(os.path.expanduser(os.environ.get("NOUS_DATA_DIR", "~/nous-data")))
+        rep_dir = data_dir / "reports"
+        rep_dir.mkdir(parents=True, exist_ok=True)
+        report_path = rep_dir / f"meituan_{result.as_of.replace('-', '')}.md"
+        report_path.write_text(render_markdown(result), encoding="utf-8")
+        console.print(f"\n  [dim]报告: {report_path}[/dim]")
+
+    console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
+
+
+
+@app.command("meituan-backtest")
+def meituan_backtest(
+    start: str = typer.Option("", "--start", "-s", help="起始交易日"),
+    end: str = typer.Option("", "--end", "-e", help="结束交易日"),
+    hold: int = typer.Option(5, "--hold", help="持有交易日数"),
+    long_th: float = typer.Option(0.0, "--long-th", help="做多阈值，默认 YAML lean_long"),
+    short_th: float = typer.Option(0.0, "--short-th", help="做空阈值，默认 YAML lean_short"),
+    json_out: bool = typer.Option(False, "--json", help="输出 JSON"),
+    max_points: int = typer.Option(40, "--max-points", help="采样点数上限"),
+):
+    """美团综合分简易事件回测（需本地行情；较慢）。"""
+    from nous.engine.screening.meituan_reversal import backtest_meituan_reversal
+
+    lt = long_th if long_th != 0 else None
+    st = short_th if short_th != 0 else None
+    out = backtest_meituan_reversal(
+        start=start,
+        end=end,
+        hold_days=hold,
+        long_threshold=lt,
+        short_threshold=st,
+        max_points=max_points,
+    )
+    if json_out:
+        console.print_json(data=out)
+        return
+    if out.get("error"):
+        console.print(f"[red]{out['error']}[/red]")
+        raise typer.Exit(1)
+    s = out["summary"]
+    console.print(Panel.fit("[bold cyan]美团反转 — 事件回测[/bold cyan]", border_style="cyan"))
+    console.print(
+        f"  hold={s['hold_days']}d  long>={s['long_threshold']}  short<={s['short_threshold']}  "
+        f"事件数={s['n_events']}"
+    )
+    for side in ("long", "short"):
+        b = s[side]
+        wr = "n/a" if b["win_rate"] is None else f"{b['win_rate']:.1%}"
+        af = "n/a" if b["avg_fwd"] is None else f"{b['avg_fwd']:+.2%}"
+        console.print(f"  {side}: n={b['n']}  胜率={wr}  均收益={af}")
+    console.print(f"  [dim]{s.get('sample_note','')}[/dim]")
+    evs = out.get("events") or []
+    if evs:
+        table = Table(title=f"事件样本（最多 20）")
+        for col in ("trade_date", "composite", "signal", "close", "fwd"):
+            table.add_column(col)
+        for r in evs[:20]:
+            table.add_row(
+                str(r["trade_date"]),
+                f"{r['composite']:.1f}",
+                str(r["signal"]),
+                f"{r['close']:.2f}",
+                "n/a" if r["fwd"] is None else f"{r['fwd']:+.2%}",
+            )
+        console.print(table)
+
+
+@app.command("meituan-alert")
+def meituan_alert(
+    date: str = typer.Option("", "--date", "-d", help="截至交易日"),
+    json_out: bool = typer.Option(False, "--json", help="输出 JSON"),
+):
+    """若综合分触及 lean 阈值则告警。"""
+    from nous.engine.screening.meituan_reversal import (
+        classify_alert,
+        run_meituan_reversal,
+    )
+
+    res = run_meituan_reversal(as_of=date or None)
+    tag = classify_alert(res.composite)
+    payload = {
+        "as_of": res.as_of,
+        "composite": res.composite,
+        "signal": res.signal,
+        "alert": tag,
+        "last_close": res.last_close,
+    }
+    if json_out:
+        console.print_json(data=payload)
+    elif tag:
+        console.print(
+            f"[bold yellow]ALERT {tag}[/bold yellow]  "
+            f"{res.as_of}  综合分={res.composite:.1f}  收盘={res.last_close}  信号={res.signal}"
+        )
+    else:
+        console.print(
+            f"[dim]无告警[/dim]  {res.as_of}  综合分={res.composite}  信号={res.signal}"
+        )
+    if tag is None:
+        # exit 0 still — alert is informational
+        pass
+    else:
+        # non-zero so cron/scripts can detect
+        raise typer.Exit(2)
+
+
+
+@app.command("right-side")
+def right_side_cmd(
+    date: str = typer.Option("", "--date", "-d", help="截至交易日"),
+    top: int = typer.Option(30, "--top", "-n", help="输出前N"),
+    json_out: bool = typer.Option(False, "--json", help="输出 JSON"),
+    save: bool = typer.Option(False, "--save", help="写入 ~/nous-data/reports/right_side_*.md"),
+    max_symbols: int = typer.Option(0, "--max-symbols", help="调试：最多扫描N只（0=全市场）"),
+):
+    """右侧选股 Phase1 — RS1 Donchian慢突破 + RS2 多头回踩（与超跌左侧隔离）。"""
+    import time
+    import os
+    from pathlib import Path as _Path
+    from nous.engine.screening.right_side import render_markdown, scan_right_side
+
+    t0 = time.time()
+    res = scan_right_side(as_of=date or "", top_n=top, max_symbols=max_symbols)
+    if json_out:
+        console.print_json(data=res.to_dict())
+    else:
+        console.print(Panel.fit("[bold cyan]Nous Right-Side — Phase1[/bold cyan]", border_style="cyan"))
+        gate = "[green]通过[/green]" if res.gate_ok else "[yellow]未通过[/yellow]"
+        console.print(f"  日期: {res.as_of} | 闸门: {gate} | {res.gate_detail}")
+        console.print(f"  扫描: {res.scanned} | 信号: {len(res.signals)}\n")
+        table = Table(title=f"TOP{len(res.signals)}")
+        for col in ("代码", "名称", "Setup", "得分", "收盘", "触发", "止损", "说明"):
+            table.add_column(col)
+        for s in res.signals:
+            table.add_row(
+                s.symbol, s.name, s.setup, f"{s.score:.1f}", f"{s.close}",
+                s.trigger, f"{s.stop_hint}", s.detail[:48],
+            )
+        console.print(table)
+        for n in res.notes:
+            console.print(f"  [yellow]{n}[/yellow]")
+    if save:
+        data_dir = _Path(os.path.expanduser(os.environ.get("NOUS_DATA_DIR", "~/nous-data")))
+        rep = data_dir / "reports"
+        rep.mkdir(parents=True, exist_ok=True)
+        path = rep / f"right_side_{res.as_of.replace('-', '')}.md"
+        path.write_text(render_markdown(res), encoding="utf-8")
+        console.print(f"\n  [dim]报告: {path}[/dim]")
+    console.print(f"\n  [dim]总耗时: {time.time()-t0:.1f}s[/dim]")
+
+
+
+@app.command("right-side-backtest")
+def right_side_backtest_cmd(
+    start: str = typer.Option("", "--start", "-s"),
+    end: str = typer.Option("", "--end", "-e"),
+    stride: int = typer.Option(5, "--stride"),
+    json_out: bool = typer.Option(False, "--json"),
+):
+    """右侧事件回测（单窗口；验收请用 right-side-accept）。"""
+    from nous.engine.screening.right_side_backtest import run_event_backtest, split_windows
+    from nous.engine.screening.right_side import _get_conn
+    if not start or not end:
+        with _get_conn() as conn:
+            w = split_windows(conn)
+        start = start or w["start"]
+        end = end or w["end"]
+    out = run_event_backtest(start, end, stride=stride)
+    if json_out:
+        console.print_json(data={k: v for k, v in out.items() if k != "trades"})
+        return
+    m = out.get("metrics") or {}
+    console.print(Panel.fit("[bold cyan]右侧事件回测[/bold cyan]", border_style="cyan"))
+    console.print(f"  窗口: {out.get('start')} .. {out.get('end')}  stride={out.get('stride')}")
+    console.print(f"  扫描日={out.get('days_scanned')} 闸门日={out.get('days_gate_pass')} 有信号日={out.get('signal_days')}")
+    console.print(f"  n={m.get('n')} WR={m.get('win_rate')} PF={m.get('profit_factor')} avg={m.get('avg_ret')} dd={m.get('max_dd_proxy')}")
+
+
+@app.command("right-side-accept")
+def right_side_accept_cmd(
+    stride: int = typer.Option(5, "--stride", help="采样间隔交易日"),
+    json_out: bool = typer.Option(False, "--json"),
+    save: bool = typer.Option(True, "--save/--no-save", help="写验收报告"),
+):
+    """右侧 OOS 双窗口验收；未通过则 trade_enabled=false。"""
+    import time
+    import os
+    from pathlib import Path as _Path
+    from nous.engine.screening.right_side_backtest import render_acceptance_md, run_acceptance
+
+    t0 = time.time()
+    console.print("[dim]高精度验收较慢，请等待…[/dim]")
+    res = run_acceptance(stride=stride)
+    if json_out:
+        console.print_json(data=res)
+    else:
+        ok = res.get("passed")
+        console.print(Panel.fit(
+            f"[bold]{'验收通过' if ok else '验收未通过'}[/bold]  trade_enabled={res.get('trade_enabled')}",
+            border_style="green" if ok else "red",
+        ))
+        for c in (res.get("acceptance") or {}).get("checks") or []:
+            mark = "PASS" if c.get("ok") else "FAIL"
+            console.print(f"  [{mark}] {c.get('name')}: {c.get('detail')}")
+        console.print(f"  cal_n={res.get('cal_trades_n')} oos_n={res.get('oos_trades_n')}")
+        if res.get("reason"):
+            console.print(f"  [yellow]{res.get('reason')}[/yellow]")
+    if save:
+        data_dir = _Path(os.path.expanduser(os.environ.get("NOUS_DATA_DIR", "~/nous-data")))
+        rep = data_dir / "reports"
+        rep.mkdir(parents=True, exist_ok=True)
+        from datetime import date as _date
+        path = rep / f"right_side_acceptance_{_date.today().strftime('%Y%m%d')}.md"
+        path.write_text(render_acceptance_md(res), encoding="utf-8")
+        console.print(f"  [dim]报告: {path}[/dim]")
+    console.print(f"  [dim]耗时: {time.time()-t0:.1f}s[/dim]")
+    raise typer.Exit(0 if res.get("passed") else 2)
+
 
 @app.command()
 def version():

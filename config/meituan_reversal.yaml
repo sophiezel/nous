@@ -1,0 +1,59 @@
+# 美团(03690) 多层反转指标 — 研究用概率信号，非保证涨跌
+# 分数约定：各层与综合分均为 [-100, +100]
+#   正分 = 偏多头反转/上行共振；负分 = 偏空头反转/下行共振；接近 0 = 中性/不确定
+
+meituan:
+  symbol: "03690"
+  name: "美团-W"
+  peers:
+    - { symbol: "09988", name: "阿里巴巴-SW", role: "本地生活/电商竞对" }
+    - { symbol: "09618", name: "京东集团-SW", role: "即时零售竞对" }
+    - { symbol: "00700", name: "腾讯控股", role: "港股互联网贝塔" }
+  indices:
+    market: "HSI"
+    china_internet: "KWEB"
+    us10y: "TNX"
+    dxy: "DXY"
+    usdcny: "USDCNY"
+    vix: "VIX"
+
+  lookbacks:
+    price_bars: 120
+    rsi: 14
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    boll: 20
+    ma_fast: 20
+    ma_slow: 60
+    vol_ma: 20
+    relative: 20
+    hsgt: 10
+    macro: 6
+
+  # 层权重（合计 100）；缺数层自动剔除并重归一
+  weights:
+    technical: 22
+    relative: 14
+    capital: 16
+    macro: 14
+    rates_fx: 12
+    sentiment_policy: 8
+    fundamental: 10
+    regime: 4
+
+  thresholds:
+    strong_long: 35
+    lean_long: 15
+    lean_short: -15
+    strong_short: -35
+    rsi_oversold: 32
+    rsi_overbought: 68
+    volume_climax: 2.2
+    hsgt_z: 1.0
+
+  # 基本面 CSV（可选）；不存在则该层 skipped
+  fundamentals_csv: "config/meituan_fundamentals.csv"
+
+  disclaimer: >
+    本模块输出研究用分层概率信号，不是投资建议；实盘须结合风控与人工复核。
