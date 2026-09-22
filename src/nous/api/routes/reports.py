@@ -1,6 +1,6 @@
 """报告"""
 from fastapi import APIRouter, Query
-from nous.core.db import safe_query, REPORTS_DB
+from nous.api.db import safe_query, REPORTS_DB
 
 router = APIRouter()
 

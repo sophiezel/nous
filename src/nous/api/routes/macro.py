@@ -1,6 +1,6 @@
 """宏观评分"""
 from fastapi import APIRouter
-from nous.core.db import safe_query, REPORTS_DB, SCREENER_DB
+from nous.api.db import safe_query, REPORTS_DB, SCREENER_DB
 
 router = APIRouter()
 

@@ -1,6 +1,6 @@
 """情绪"""
 from fastapi import APIRouter
-from nous.core.db import safe_query, SCREENER_DB
+from nous.api.db import safe_query, SCREENER_DB
 
 router = APIRouter()
 

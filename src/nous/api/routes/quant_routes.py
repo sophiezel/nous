@@ -1,6 +1,6 @@
 """量化"""
 from fastapi import APIRouter, Query
-from nous.core.db import safe_query, SCREENER_DB
+from nous.api.db import safe_query, SCREENER_DB
 
 router = APIRouter()
 

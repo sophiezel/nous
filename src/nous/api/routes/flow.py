@@ -1,6 +1,6 @@
 """资金流"""
 from fastapi import APIRouter, Query
-from nous.core.db import safe_query, SCREENER_DB
+from nous.api.db import safe_query, SCREENER_DB
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ def flow_hsgt(dir: str = "north", days: int = 60):
         (dir, days))
 
 @router.get("/v1/flow/hsgt/stocks")
-def flow_hsgt_stocks(dir: str = "北向", limit: int = 10, date: str = None):
+def flow_hsgt_stocks(dir: str = "北向", limit: int = 10, date: str | None = None):
     if date:
         return safe_query(SCREENER_DB,
             "SELECT * FROM hsgt_stock_daily WHERE direction = ? AND trade_date = ? ORDER BY rank LIMIT ?",
@@ -45,7 +45,7 @@ def flow_hsgt_sectors(dir: str = "北向", limit: int = 5):
         (dir, rows[0]["d"], limit))
 
 @router.get("/v1/flow/lhb")
-def flow_lhb(limit: int = 10, date: str = None):
+def flow_lhb(limit: int = 10, date: str | None = None):
     if date:
         return safe_query(SCREENER_DB,
             "SELECT * FROM lhb_daily WHERE trade_date = ? ORDER BY ABS(net_amount) DESC LIMIT ?",

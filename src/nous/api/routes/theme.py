@@ -1,6 +1,6 @@
 """主线板块 + 筛选 + 个股"""
 from fastapi import APIRouter, Query
-from nous.core.db import safe_query, SCREENER_DB, REPORTS_DB
+from nous.api.db import safe_query, SCREENER_DB, REPORTS_DB
 
 router = APIRouter()
 

@@ -1,11 +1,11 @@
 """消息"""
 from fastapi import APIRouter, Query
-from nous.core.db import safe_query, SCREENER_DB
+from nous.api.db import safe_query, SCREENER_DB
 
 router = APIRouter()
 
 @router.get("/v1/messages")
-def messages_list(limit: int = 50, type: str = None):
+def messages_list(limit: int = 50, type: str | None = None):
     if type:
         return safe_query(SCREENER_DB,
             "SELECT *, read as is_read FROM messages WHERE type = ? ORDER BY created_at DESC LIMIT ?",
