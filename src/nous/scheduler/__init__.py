@@ -114,6 +114,8 @@ JOBS = [
 
     # === Research ===
     ("pvglass-weekly",      "40 8 * * 1",     f"{VENV_PYTHON} {PROJECT_ROOT}/src/nous/scheduler/jobs/research/pvglass_weekly.py", "光伏玻璃周度跟踪", 900),
+    # 观察清单：只读库、无网络，只在状态跃迁时推送（所以能天天跑而不刷屏）
+    ("pvglass-watch",       "30 18 * * 1-5", f"{VENV_PYTHON} {PROJECT_ROOT}/src/nous/scheduler/jobs/research/pvglass_watch.py", "光伏玻璃观察清单告警", 120),
 
     # === Maintenance ===
     ("db-backup",          "0 * * * *",      f"{VENV_PYTHON} -c \"from nous.data.storage import backup; backup.run_hourly()\"", "DB备份", 300),

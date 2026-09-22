@@ -766,3 +766,34 @@ signals:
     conditions:
       - {indicator: consensus_np_fy2027, op: pct_chg_gte, value: 10, window_days: 90}
       - {indicator: xinyi_pb, op: gte, value: 0.8, window_days: 60}
+
+# ── 观察清单（只提醒、不进 verdict）─────────────────────────────────────
+# 与 signals 同一 schema，由 `nous pv watch` 检测**状态跃迁**并推送。
+# 放在这里的好处：加/改观察项不用改代码；与信号共用一份算子与指标校验。
+#
+# 与 signals 的区别：signals 回答"修复成立了吗"（进 verdict），
+# watch 回答"有什么值得知道的事发生了"（不进 verdict，不参与多空判读）。
+watch:
+  - id: W1_furnace_65000
+    name: 在产日熔量降至 6.5 万吨
+    thesis: 银河期货两广调研 / 财通证券——日熔降到 6.5 万吨后库存才会去化、价格才有上涨动力
+    logic: all
+    conditions:
+      - indicator: glass_capacity_operating
+        op: lte
+        value: 65000
+        window_days: 120
+        note: 当前 72,000（S4 的门槛是 ≤72,000，本条是更严的"去库+涨价"临界值）
+  - id: W2_inventory_35
+    name: 库存天数降至 35 天
+    thesis: 期货日报（产业人士）——头部企业需库存回落至 35 天以内且加工费修复至现金成本线之上才考虑重启产线
+    logic: all
+    conditions:
+      - indicator: glass_inventory_days
+        op: lte
+        value: 35
+        window_days: 150
+        note: ⚠️ 35 天为**隆众口径**；本库该指标是**卓创口径**，只能作方向性参考，不可直接对号
+  # 注："库存进 40 天"不再单列 —— S1 自己就带这个条件，
+  # watch.py 会逐条件比较，已能报出"库存条件翻面但价格未站稳"这种“差一步”的时刻。
+  # 单列会同一件事报两行，属告警噪声。

@@ -118,6 +118,8 @@ class Registry:
     signals: tuple[Signal, ...]
     path: Path
     anchors: dict[str, AnchorSpec] = field(default_factory=dict)
+    #: 仅观察、不参与 verdict 的条件组（同 Signal schema）。见 watch.py
+    watch: tuple[Signal, ...] = ()
 
     # ── 查询辅助 ───────────────────────────────────────────────────
     def get(self, indicator_id: str) -> Indicator:
@@ -217,6 +219,47 @@ def _int(value: Any, where: str) -> int:
         raise RegistryError(f"{where} 需要整数，得到 {value!r}") from exc
 
 
+def _parse_signal_group(
+    raw_list: Any, indicators: dict[str, Indicator], *, where: str
+) -> list[Signal]:
+    """解析 signals / watch 两段（schema 完全相同）。
+
+    两段共用一份校验，避免“watch 段能写非法算子/引用未定义指标”的漏洞。
+    """
+    out: list[Signal] = []
+    for raw in raw_list or []:
+        sid = str(_require(raw, "id", where))
+        conds: list[Condition] = []
+        for c in raw.get("conditions") or []:
+            op = c.get("op", "")
+            if op not in OPS:
+                raise RegistryError(f"{where} {sid} 使用了不支持的算子: {op!r} (可用: {', '.join(OPS)})")
+            target = c.get("indicator", "")
+            if target not in indicators:
+                raise RegistryError(f"{where} {sid} 引用了未定义指标: {target}")
+            conds.append(
+                Condition(
+                    indicator=target,
+                    op=op,
+                    value=_num(c.get("value", 0), f"{where} {sid} 的 value"),
+                    window_days=_int(c.get("window_days", 30), f"{where} {sid} 的 window_days"),
+                    note=c.get("note", ""),
+                )
+            )
+        if not conds:
+            raise RegistryError(f"{where} {sid} 没有条件")
+        out.append(
+            Signal(
+                id=sid,
+                name=raw.get("name", sid),
+                thesis=raw.get("thesis", ""),
+                logic=raw.get("logic", "all"),
+                conditions=tuple(conds),
+            )
+        )
+    return out
+
+
 def load_registry(path: str | Path | None = None) -> Registry:
     """读取并校验指标字典。"""
     cfg_path = Path(path).expanduser() if path else default_config_path()
@@ -276,44 +319,13 @@ def load_registry(path: str | Path | None = None) -> Registry:
             raise RegistryError(f"指标 {iid} 的 auto 非法: {ind.auto}")
         indicators[iid] = ind
 
-    signals: list[Signal] = []
-    for raw in doc.get("signals") or []:
-        sid = str(_require(raw, "id", "signal"))
-        conds: list[Condition] = []
-        for c in raw.get("conditions") or []:
-            op = c.get("op", "")
-            if op not in OPS:
-                raise RegistryError(f"信号 {sid} 使用了不支持的算子: {op!r} (可用: {', '.join(OPS)})")
-            target = c.get("indicator", "")
-            if target not in indicators:
-                raise RegistryError(f"信号 {sid} 引用了未定义指标: {target}")
-            conds.append(
-                Condition(
-                    indicator=target,
-                    op=op,
-                    value=_num(c.get("value", 0), f"信号 {sid} 的 value"),
-                    window_days=_int(c.get("window_days", 30), f"信号 {sid} 的 window_days"),
-                    note=c.get("note", ""),
-                )
-            )
-        if not conds:
-            raise RegistryError(f"信号 {sid} 没有条件")
-        signals.append(
-            Signal(
-                id=sid,
-                name=raw.get("name", sid),
-                thesis=raw.get("thesis", ""),
-                logic=raw.get("logic", "all"),
-                conditions=tuple(conds),
-            )
-        )
-
     return Registry(
         meta=doc.get("meta") or {},
         sources=sources,
         groups=doc.get("groups") or {},
         indicators=indicators,
-        signals=tuple(signals),
+        signals=tuple(_parse_signal_group(doc.get("signals"), indicators, where="信号")),
         path=cfg_path,
         anchors=anchors,
+        watch=tuple(_parse_signal_group(doc.get("watch"), indicators, where="观察项")),
     )

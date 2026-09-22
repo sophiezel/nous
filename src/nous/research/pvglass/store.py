@@ -69,6 +69,18 @@ CREATE TABLE IF NOT EXISTS fetch_log (
     message     TEXT,
     duration_ms INTEGER
 );
+
+-- 观察清单的“上次状态”快照（watch.py 用来判跃迁）。
+-- key 为 signal:<id> / cond:<signal>@<indicator> / watch:<id>
+CREATE TABLE IF NOT EXISTS watch_state (
+    key           TEXT PRIMARY KEY,
+    kind          TEXT NOT NULL,
+    status        TEXT NOT NULL,
+    detail        TEXT,
+    first_seen_at TEXT,
+    changed_at    TEXT,
+    alerted_at    TEXT
+);
 """
 
 

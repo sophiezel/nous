@@ -4,6 +4,7 @@
     nous pv fetch [--source etnet]      抓取（默认全部数据源）
     nous pv show [--group price]        指标仪表盘 / 单指标时序
     nous pv signal                      拐点信号看板
+    nous pv watch [--push]              观察清单跃迁告警（只在变化时推）
     nous pv xinyi [--sens]              信义光能盈利模型 + 敏感性
     nous pv set <id> <value>            人工录入指标
     nous pv digest [--out PATH]         生成周报 Markdown
@@ -28,7 +29,7 @@ from nous.research.pvglass import backtest as bt
 from nous.research.pvglass import digest as digest_mod
 from nous.research.pvglass import pipeline
 from nous.research.pvglass import signals as sig_engine
-from nous.research.pvglass import store, xinyi
+from nous.research.pvglass import store, watch, xinyi
 from nous.research.pvglass.registry import Indicator, Registry, load_registry
 from nous.research.pvglass.sources import DEFAULT_ORDER, available, collect_one
 
@@ -326,6 +327,94 @@ def signal_cmd(
             )
         console.print(table)
         console.print("\n[dim]信号定义在 config/pvglass_indicators.yaml → signals[/dim]")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# watch — 观察清单跃迁告警
+# ═══════════════════════════════════════════════════════════════════════
+@pv_app.command("watch")
+def watch_cmd(
+    push: bool = typer.Option(False, "--push", help="有跃迁时推送到配置的通道"),
+    force_push: bool = typer.Option(False, "--force-push", help="即使无跃迁也推（验证通道用）"),
+    reset: bool = typer.Option(False, "--reset-baseline", help="清空基线（下次重建且不告警）"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="比较但不写库，便于反复试算"),
+    json_out: bool = typer.Option(False, "--json", help="输出 JSON"),
+):
+    """观察清单跃迁告警 — 只在状态变化时推送。
+
+    与 `nous pv signal` 的区别：signal 回答"现在什么状态"（无记忆），
+    watch 回答"和上次比变了什么"——所以它可以每天跑而不会刷屏。
+
+    观察三档：信号状态 / 信号内部每个条件 / 字典 watch: 段的独立阈值。
+    首次运行只建基线、**不告警**；用 --reset-baseline 可重建。
+    """
+    reg = _reg()
+    store.init_db()
+    with get_db(store.DB_NAME, write=True) as conn:
+        store.ensure_schema(conn)
+        if reset:
+            n = watch.reset(conn)
+            console.print(f"[yellow]已清空 {n} 条基线状态[/yellow]（下次运行会重建且不告警）")
+            if not dry_run:
+                return
+        outcome = watch.check(conn, reg, persist=not dry_run)
+
+    if json_out:
+        console.print_json(data={
+            "ran_at": outcome.ran_at,
+            "is_baseline_run": outcome.is_baseline_run,
+            "verdict": outcome.verdict_level,
+            "verdict_text": outcome.verdict_text,
+            "persisted": outcome.persisted,
+            "watched": len(outcome.items),
+            "changes": [
+                {"key": c.item.key, "kind": c.item.kind, "name": c.item.name,
+                 "before": c.before, "after": c.after, "severity": c.severity,
+                 "detail": c.item.detail}
+                for c in outcome.changes
+            ],
+        })
+    else:
+        if outcome.is_baseline_run:
+            console.print(Panel.fit(
+                f"[cyan]已建立基线[/cyan] — 记录 {len(outcome.items)} 项状态，"
+                "[bold]本次不告警[/bold]\n下次起只在状态跃迁时推送"))
+        elif outcome.changes:
+            head = "red" if outcome.critical_count else "yellow"
+            console.print(Panel.fit(
+                f"[bold {head}]{len(outcome.changes)} 项状态跃迁[/bold {head}]"
+                + (f"（{outcome.critical_count} 项 critical）" if outcome.critical_count else "")))
+            table = Table()
+            table.add_column("对象", style="cyan")
+            table.add_column("变化")
+            table.add_column("依据", style="dim")
+            for c in sorted(outcome.changes, key=lambda x: x.severity != watch.CRITICAL):
+                mark = "🔴" if c.severity == watch.CRITICAL else "🔵"
+                style = "red" if c.severity == watch.CRITICAL else "yellow"
+                table.add_row(
+                    f"{mark} {c.item.name}",
+                    f"{c.before} → [{style}]{c.after}[/{style}]",
+                    c.item.detail[:78],
+                )
+            console.print(table)
+        else:
+            console.print(
+                f"[dim]无状态跃迁（已观察 {len(outcome.items)} 项）[/dim]"
+            )
+        console.print(f"  判读: [bold]{outcome.verdict_level.upper()}[/bold] — {outcome.verdict_text}")
+        if dry_run:
+            console.print("  [dim]--dry-run：未写库[/dim]")
+
+    should_push = push and (outcome.alerted or force_push) and not dry_run
+    if should_push:
+        results = notify.send(outcome.push_title(), outcome.push_body())
+        for res in results:
+            style = {"ok": "green", "error": "red"}.get(res.status, "dim")
+            console.print(f"  推送 {res.channel}: [{style}]{res.status}[/{style}] {res.detail[:60]}")
+    elif push:
+        console.print("  [dim]无跃迁 → 不推送（不刷屏）[/dim]")
+    elif outcome.alerted:
+        console.print("  [dim]加 --push 可推送到配置的通道[/dim]")
 
 
 # ═══════════════════════════════════════════════════════════════════════
