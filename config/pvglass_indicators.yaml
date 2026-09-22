@@ -1,0 +1,750 @@
+# ═══════════════════════════════════════════════════════════════════════
+# 光伏玻璃产业链 — 全维度指标字典
+#
+# 用法:  nous pv fetch / show / signal / digest
+# 字段:
+#   id        指标唯一键（存库主键，勿随意改名）
+#   group     分组: cost_upstream | supply | price | demand | company | peers | valuation | policy
+#   unit      单位
+#   freq      daily | weekly | monthly | quarterly | event
+#   auto      auto=可自动抓取 | seed=半自动(需种子URL/正则) | manual=人工录入
+#   source    采集器 id (见 sources 段)
+#   bias      对光伏玻璃龙头利润的方向: up_bullish(升利好) | up_bearish(升利空) | neutral
+#   bull/bear 关注阈值（信号引擎用）
+#   note      为什么盯它 / 口径提醒
+# ═══════════════════════════════════════════════════════════════════════
+
+meta:
+  name: 光伏玻璃产业链跟踪
+  version: 2
+  updated: "2026-09-16"
+  anchor: 00968.HK 信义光能
+
+# 锚定标的：同一套字典里并行跟踪多家公司
+# 指标用 anchor 字段归属；未声明的行业级指标默认归 xinyi
+anchors:
+  xinyi:
+    name: 信义光能
+    code: "00968.HK"
+    market: hk
+    price_indicator: xinyi_price
+    model: pvglass_model.yaml
+    note: 主锚定标的，含完整盈利模型
+  flat:
+    name: 福莱特
+    code: "601865.SH / 06865.HK"
+    market: a+hk
+    price_indicator: flat_glass_price
+    note: 玻璃双雄的"下限锚"，用于交叉验证行业性修复
+  xenergy:
+    name: 信义能源
+    code: "03868.HK"
+    market: hk
+    price_indicator: xenergy_price
+    note: 信义光能持股 50.75%，是公司利润与少数股东分成的来源
+
+sources:
+  hkex:
+    name: 港交所披露易
+    kind: auto
+    desc: 公告/盈警/中报/月报/回购，需先取 cookie
+    # stockId 可预置（省一次反查）；未命中时自动用 prefix.do 反查
+    stock_ids: {"00968": 97365, "06865": 133883, "03868": 209025}
+  energytrend:
+    name: 集邦新能源网(TrendForce)
+    kind: auto
+    desc: 硅料/硅片/电池/组件 周度成交价 + 库存 + 玻璃产业新闻
+    index: https://www.energytrend.cn/pricequotes/
+  mysteel:
+    name: 我的钢铁/隆众 光伏玻璃
+    kind: seed
+    desc: 玻璃报价与结算价、库存天数、冷修；正文可正则抽取
+    # ⚠️ 已知问题(2026-09): list1.mysteel.com 上无稳定的光伏玻璃列表页，
+    # 且旧索引会返回 2025 年老文。采集器已加 45 天新鲜度过滤，
+    # 因此日常靠下面的 seed_urls（每周追加，或用 nous pv fetch -s mysteel -u <url>）
+    index_candidates:
+      - https://list1.mysteel.com/zhishi/gfblmrjg.html
+      - https://list1.mysteel.com/zhishi/gfbljg.html
+    seed_urls:
+      - https://www.mysteel.com/oilchem/a/26090409/18E302AEAFA7B47B.html
+      - https://www.mysteel.com/oilchem/a/26082611/26DE6A4697F27385.html
+  etnet:
+    name: etnet 经济通 盈利预测概览
+    kind: auto
+    desc: 券商一致预期 / 逐家预测 / 目标价
+    url: https://www.etnet.com.hk/www/tc/stocks/realtime/quote_profit.php?code={code}
+  akshare_futures:
+    name: akshare 期货(新浪)
+    kind: auto
+    desc: 纯碱SA0 / 玻璃FG0 连续合约，作为成本与情绪代理
+  akshare_quote:
+    name: akshare 行情
+    kind: auto
+    desc: 港股 stock_hk_daily / A股 stock_zh_a_hist
+  demand:
+    name: 需求侧(多源)
+    kind: auto
+    desc: 装机(光动百科转载NEA,差分) / 电池产量(统计局) / 排产(DataBM周评) / 招标(集邦)
+  report_pdf:
+    name: 业绩公告PDF
+    kind: auto
+    desc: 港交所业绩公告 PDF → pdftotext -layout → 分部毛利率/收入/归母；**需 poppler**，缺则明确 skipped
+  manual:
+    name: 人工录入
+    kind: manual
+    desc: nous pv set <id> <value>
+
+groups:
+  cost_upstream: 上游成本
+  supply: 中游供给
+  price: 价格
+  demand: 需求
+  company: 信义光能(公司)
+  peers: 同业对标
+  valuation: 估值与预期
+  policy: 政策与事件
+
+indicators:
+  # ── 上游成本 ───────────────────────────────────────────────────────
+  - id: soda_ash_futures
+    name: 纯碱期货主力(SA0)
+    group: cost_upstream
+    unit: 元/吨
+    freq: daily
+    auto: auto
+    source: akshare_futures
+    bias: up_bearish
+    note: 纯碱约占光伏玻璃成本 20~25%，期货是成本预期的最快代理
+  - id: soda_ash_spot_heavy
+    name: 重质纯碱现货(华东)
+    group: cost_upstream
+    unit: 元/吨
+    freq: daily
+    auto: manual
+    source: manual
+    bias: up_bearish
+    note: 现货口径与期货可能背离；纯碱累库时成本支撑失效
+  - id: natgas_price
+    name: 工业天然气/LNG 到厂价
+    group: cost_upstream
+    unit: 元/立方米
+    freq: monthly
+    auto: manual
+    source: manual
+    bias: up_bearish
+    note: 玻璃窑炉燃料；Q4 冬季气价上行会吞掉涨价红利
+  - id: heavy_oil_price
+    name: 重油/石油焦价格
+    group: cost_upstream
+    unit: 元/吨
+    freq: monthly
+    auto: manual
+    source: manual
+    bias: up_bearish
+  - id: float_glass_futures
+    name: 浮法玻璃期货主力(FG0)
+    group: cost_upstream
+    unit: 元/吨
+    freq: daily
+    auto: auto
+    source: akshare_futures
+    bias: neutral
+    note: 非直接成本，但反映玻璃行业整体供需与冷修情绪
+
+  # ── 中游供给 ───────────────────────────────────────────────────────
+  - id: glass_price_2_0_single
+    name: 光伏玻璃2.0mm单镀面板(含税送到)
+    group: price
+    unit: 元/㎡
+    freq: daily
+    auto: seed
+    source: mysteel
+    bias: up_bullish
+    bull: 10.5
+    bear: 9.5
+    note: 【核心】行业"统一报价"标的；区分报价/结算价
+  - id: glass_price_2_0_double
+    name: 光伏玻璃2.0mm双镀面板
+    group: price
+    unit: 元/㎡
+    freq: daily
+    auto: seed
+    source: mysteel
+    bias: up_bullish
+    bull: 11.5
+  - id: glass_price_2_0_back
+    name: 光伏玻璃2.0mm背板
+    group: price
+    unit: 元/㎡
+    freq: daily
+    auto: seed
+    source: mysteel
+    bias: up_bullish
+  - id: glass_price_3_2_single
+    name: 光伏玻璃3.2mm单镀面板
+    group: price
+    unit: 元/㎡
+    freq: daily
+    auto: seed
+    source: mysteel
+    bias: up_bullish
+    bull: 18.0
+  - id: glass_settlement_price
+    name: 光伏玻璃2.0mm月度结算价
+    group: price
+    unit: 元/㎡
+    freq: monthly
+    auto: seed
+    source: mysteel
+    bias: up_bullish
+    bull: 10.5
+    note: 【比报价重要】结算价才是当期收入
+  - id: glass_inventory_days
+    name: 光伏玻璃行业库存天数
+    group: supply
+    unit: 天
+    freq: weekly
+    auto: seed
+    source: mysteel
+    bias: up_bearish
+    bull: 35.0
+    bear: 53.4
+    note: 5月峰值53.4天(历史新高)；7/30降至45.13；<35天是趋势上行的门槛
+  - id: glass_capacity_operating
+    name: 在产日熔量(全国/全球)
+    group: supply
+    unit: 吨/日
+    freq: weekly
+    auto: seed
+    source: mysteel
+    bias: up_bearish
+    bear: 72000
+    note: 9/10 全球/国内 8.5/7.2万t/d
+  - id: glass_capacity_cold_repair_ytd
+    name: 年初至今累计冷修产能
+    group: supply
+    unit: 吨/日
+    freq: monthly
+    auto: seed
+    source: mysteel
+    bias: up_bullish
+    bull: 19600
+  - id: glass_capacity_restart
+    name: 点火/复产产能
+    group: supply
+    unit: 吨/日
+    freq: event
+    auto: auto
+    source: energytrend
+    bias: up_bearish
+    note: 头部可点8000+t/d，是价格上行的堰塞湖
+  - id: glass_utilization
+    name: 光伏玻璃产能利用率
+    group: supply
+    unit: "%"
+    freq: monthly
+    auto: manual
+    source: manual
+    bias: neutral
+  - id: glass_cost_cash_floor
+    name: 行业二三线现金成本线
+    group: supply
+    unit: 元/㎡
+    freq: monthly
+    auto: manual
+    source: manual
+    bias: neutral
+    note: 国金测算 10~10.5 元/㎡ 时二三线仍现金亏损
+
+  # ── 需求 ───────────────────────────────────────────────────────────
+  - id: pv_install_cn_monthly
+    name: 国内光伏月度新增装机
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: auto
+    source: demand
+    bias: up_bullish
+    note: NEA 从不给单月值——由「累计新增」差分（光动百科转载一览表）；1-2月合发一期
+  - id: pv_install_cn_ytd
+    name: 国内光伏累计新增装机(年初至今)
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: auto
+    source: demand
+    bias: up_bullish
+    note: 差分基数；2026年1-7月 86.15GW(同比-61.4%)
+  - id: pv_install_cn_cumulative
+    name: 国内光伏累计装机容量
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: auto
+    source: demand
+    bias: up_bullish
+    note: 截至2026-07 底 1288.04GW（占全国 31.58%）；官方只给 0.1 亿千瓦粒度
+  - id: cell_output_cn
+    name: 太阳能电池(光伏电池)产量-统计局
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: auto
+    source: demand
+    bias: up_bullish
+    note: 规上工业口径、含电池片与出口，**≠组件产量**（2026-08 单月 67.02GW、同比-12.9%）
+  - id: module_production_cn
+    name: 国内组件产量(CPIA口径)
+    group: demand
+    unit: GW
+    freq: semi-annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: CPIA 无月度数据（2026H1 组件产量 201.3GW、-35.1%），只能半年度人工补
+  - id: module_schedule_cn
+    name: 组件排产(月, 调研预估)
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: auto
+    source: demand
+    bias: up_bullish
+    note: "DataBM 周评区间取中值（2026-09 为 46-50GW）；SMM 同月含海外口径约 55GW，不可混用"
+  - id: tender_volume_pv
+    name: 国内光伏组件月度招标量
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: auto
+    source: demand
+    bias: up_bullish
+    note: "集邦光储观察；只取「招标规模」口径（2026-08 为 7.72GW），不含中标/入围(14.11GW)；领先装机3-6个月"
+  - id: pv_export_volume
+    name: 组件出口量
+    group: demand
+    unit: GW
+    freq: monthly
+    auto: manual
+    source: manual
+    bias: up_bullish
+  - id: double_glass_penetration
+    name: 双玻组件渗透率
+    group: demand
+    unit: "%"
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: 双玻渗透率直接决定 2.0mm 需求占比
+
+  # ── 产业链价格(集邦,自动) ─────────────────────────────────────────
+  - id: polysilicon_price
+    name: 多晶硅致密料成交价
+    group: price
+    unit: 元/kg
+    freq: weekly
+    auto: auto
+    source: energytrend
+    bias: neutral
+    note: 【领先指标】硅料"有价无市"→规模成交是反内卷落地的第一证据
+  - id: polysilicon_inventory
+    name: 多晶硅库存
+    group: supply
+    unit: 万吨
+    freq: weekly
+    auto: auto
+    source: energytrend
+    bias: up_bearish
+    bear: 54
+    note: 9月54万吨以上且仍在提产；<40万吨才算真去库
+  - id: wafer_price_182
+    name: 硅片183mm成交均价
+    group: price
+    unit: 元/片
+    freq: weekly
+    auto: auto
+    source: energytrend
+    bias: neutral
+  - id: cell_price_182
+    name: 电池片183mm成交价
+    group: price
+    unit: 元/W
+    freq: weekly
+    auto: auto
+    source: energytrend
+    bias: neutral
+  - id: module_price_topcon
+    name: 组件TOPCon报价
+    group: price
+    unit: 元/W
+    freq: weekly
+    auto: auto
+    source: energytrend
+    bias: neutral
+    note: 9月头部0.70-0.72、二线<0.68，但"有价无市"
+  - id: wafer_inventory
+    name: 硅片库存
+    group: supply
+    unit: GW
+    freq: weekly
+    auto: auto
+    source: energytrend
+    bias: up_bearish
+
+  # ── 信义光能(公司) ────────────────────────────────────────────────
+  - id: xinyi_glass_capacity
+    name: 信义光能在产日熔量
+    group: company
+    unit: 吨/日
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: neutral
+    note: "2026-06-30 为 22,600 t/d；印尼一期 2x1200t/d（二线年内点火）"
+  - id: xinyi_overseas_ratio
+    name: 信义海外产能占比
+    group: company
+    unit: "%"
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: 2026H1 约20%；海外收入占比38.8%，有溢价
+  - id: xinyi_glass_asp
+    name: 信义光伏玻璃综合ASP
+    group: company
+    unit: 元/㎡
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: 2026H1 约9.68(-20% YoY)
+  - id: xinyi_glass_volume
+    name: 信义光伏玻璃销量
+    group: company
+    unit: 亿㎡
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: up_bullish
+  - id: xinyi_glass_gm
+    name: 信义光伏玻璃分部毛利率
+    group: company
+    unit: "%"
+    freq: semi-annual
+    auto: auto
+    source: report_pdf
+    bias: up_bullish
+    bull: 8.0
+    note: 【核心】半年报分部表自动抽取（2026H1 仅 3.3%）；单位成本约9.4元/㎡
+  - id: xinyi_renewable_gm
+    name: 信义可再生能源分部毛利率
+    group: company
+    unit: "%"
+    freq: semi-annual
+    auto: auto
+    source: report_pdf
+    bias: up_bullish
+    note: 2026H1 55.7%，受136号文市场化+限电压制；分部表自动抽取
+  - id: xinyi_attributable_profit
+    name: 信义归母净利
+    group: company
+    unit: 百万元
+    freq: semi-annual
+    auto: auto
+    source: report_pdf
+    bias: up_bullish
+    note: 半年报财务摘要自动抽取（2026H1 39.0；FY2025 844.5）
+  - id: xinyi_impairment
+    name: 信义资产减值拨备
+    group: company
+    unit: 百万元
+    freq: annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: FY2025 2,321.6 vs FY2024 392.9 — 年末减值是最大单向风险
+  - id: xinyi_net_gearing
+    name: 信义净负债率
+    group: company
+    unit: "%"
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: up_bearish
+    note: 2026H1 18.6%，现金95.3亿
+  - id: xinyi_buyback_announcements
+    name: 信义回购公告次数(近30日)
+    group: company
+    unit: 次
+    freq: weekly
+    auto: auto
+    source: hkex
+    bias: up_bullish
+    note: 2026/9 连续回购，均价约HK$2.05-2.10；回购是管理层对低估值的直接表态
+
+  # ── 同业对标 ───────────────────────────────────────────────────────
+  - id: flat_glass_glass_gm
+    name: 福莱特光伏玻璃毛利率
+    group: peers
+    unit: "%"
+    freq: semi-annual
+    auto: auto
+    source: report_pdf
+    bias: neutral
+    anchor: flat
+    bull: 8.0
+    note: 中期報告「主要產品毛利」表自动抽取（2026H1 6.73%）；龙头对比的“下限锚”
+  - id: flat_overall_gm
+    name: 福莱特整体毛利率
+    group: peers
+    unit: "%"
+    freq: semi-annual
+    auto: auto
+    source: report_pdf
+    bias: neutral
+    anchor: flat
+    note: 同上表「合计」行（2026H1 8.18%）；与光伏玻璃毛利率的差 = 其他业务贡献
+  - id: flat_glass_price
+    name: 福莱特A股(601865)收盘价
+    group: peers
+    unit: CNY
+    freq: daily
+    auto: auto
+    source: akshare_quote
+    bias: neutral
+    anchor: flat
+    note: 与信义光能(00968.HK)的AH比价，衡量两条腿的估值分歧
+  - id: flat_glass_price_h
+    name: 福莱特H股(06865)收盘价
+    group: peers
+    unit: HKD
+    freq: daily
+    auto: auto
+    source: akshare_quote
+    bias: neutral
+    anchor: flat
+    note: H股相对A股长期折价，折价率变化是情绪指标
+  - id: flat_attributable_profit
+    name: 福莱特归母净利
+    group: peers
+    unit: 百万元
+    freq: semi-annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    anchor: flat
+    note: 2026H1 -363（同比-239%），Q2单季 -401 —— 双雄中先亏的那家
+  - id: flat_glass_capacity
+    name: 福莱特在产日熔量
+    group: peers
+    unit: 吨/日
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: neutral
+    anchor: flat
+    note: 与信义 22,600 t/d 对比，看行业两大产能
+  - id: flat_overseas_ratio
+    name: 福莱特海外产能占比
+    group: peers
+    unit: "%"
+    freq: quarterly
+    auto: manual
+    source: manual
+    bias: up_bullish
+    anchor: flat
+    note: 信义靠海外产能拿溢价，福莱特海外进度是份额争夺的关键变量
+  - id: xenergy_revenue
+    name: 信义能源收入
+    group: peers
+    unit: 百万元
+    freq: semi-annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    anchor: xenergy
+    note: 2026H1 1,051.7（-13.1%）
+  - id: xenergy_capacity_mw
+    name: 信义能源运营持有核准容量
+    group: peers
+    unit: MW
+    freq: semi-annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    anchor: xenergy
+    note: "口径：公司只披露「运营并持有之核准发电容量」4,630.5MW（2026-06-30；补贴1,624+平价3,006.5），另有权益法174MW；不是按股比折算的权益装机"
+  - id: xenergy_price
+    name: 信义能源(03868)股价
+    group: peers
+    unit: HKD
+    freq: daily
+    auto: auto
+    source: akshare_quote
+    bias: neutral
+    anchor: xenergy
+  - id: flat_revenue
+    name: 福莱特营收
+    group: peers
+    unit: 百万元
+    freq: semi-annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    anchor: flat
+    note: 与信义光能营收对比看份额变化；2026H1 需从半年报录入
+  - id: xinyi_revenue
+    name: 信义光能营收
+    group: company
+    unit: 百万元
+    freq: semi-annual
+    auto: auto
+    source: report_pdf
+    bias: up_bullish
+    note: 财务摘要自动抽取（FY2025 20,861.2；2026H1 8,430.1）
+  - id: xenergy_attributable_profit
+    name: 信义能源(03868)归母净利
+    group: peers
+    unit: 百万元
+    freq: semi-annual
+    auto: manual
+    source: manual
+    bias: up_bullish
+    anchor: xenergy
+    note: 2026H1 320.0(-28.9%)，少数股东分走约49%；需从中报/年报人工录入
+
+  # ── 估值与预期 ─────────────────────────────────────────────────────
+  - id: xinyi_price
+    name: 信义光能股价
+    group: valuation
+    unit: HKD
+    freq: daily
+    auto: auto
+    source: akshare_quote
+  - id: xinyi_pb
+    name: 信义光能PB
+    group: valuation
+    unit: x
+    freq: weekly
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: 约0.6x，历史极低；国金以此为安全边际论据
+  - id: consensus_np_fy2026
+    name: 一致预期 归母(FY2026)
+    group: valuation
+    unit: 百万元
+    freq: weekly
+    auto: auto
+    source: etnet
+    bias: up_bullish
+    note: etnet 8家中位数371.3；剔除极值均值149.8；"彭博8亿"为被污染均值
+  - id: consensus_np_fy2027
+    name: 一致预期 归母(FY2027)
+    group: valuation
+    unit: 百万元
+    freq: weekly
+    auto: auto
+    source: etnet
+    bias: up_bullish
+  - id: consensus_np_fy2028
+    name: 一致预期 归母(FY2028)
+    group: valuation
+    unit: 百万元
+    freq: weekly
+    auto: auto
+    source: etnet
+    bias: up_bullish
+  - id: consensus_tp_avg
+    name: 券商平均目标价
+    group: valuation
+    unit: HKD
+    freq: weekly
+    auto: auto
+    source: etnet
+    bias: up_bullish
+
+  # ── 政策与事件 ─────────────────────────────────────────────────────
+  - id: policy_low_price_rule
+    name: 低价无序竞争成本核算政策
+    group: policy
+    unit: event
+    freq: event
+    auto: auto
+    source: energytrend
+    bias: up_bullish
+    note: 2026-09-10 发改委+市监总局；2026-07-27 协会《成本核算模型通则》
+  - id: policy_mandatory_standard
+    name: 光伏强制性能耗国标
+    group: policy
+    unit: event
+    freq: event
+    auto: manual
+    source: manual
+    bias: up_bullish
+    note: 2027-01-01 实施(如 GB 47835-2026 硅单晶能耗限额) — 制度性出清分水岭
+  - id: polysilicon_platform
+    name: 多晶硅收储平台动态
+    group: policy
+    unit: event
+    freq: event
+    auto: auto
+    source: energytrend
+    bias: up_bullish
+    note: 北京光和谦成科技(2025-12-09)，注册资本30亿
+
+# ═══════════════════════════════════════════════════════════════════════
+# 拐点信号 — 用指标自动判定"是否真的在修复"
+# op: gte | lte | gt | lt | pct_chg_gte | pct_chg_lte | mom_streak_gte | mom_streak_lte
+# window_days: 取值窗口；mom_streak_* 为末尾连续环比同向的期数阈值
+# ═══════════════════════════════════════════════════════════════════════
+signals:
+  - id: S1_glass_price
+    name: 玻璃价格趋势确认
+    thesis: 结算价(非报价)站稳才能确认收入端修复
+    logic: all
+    conditions:
+      - {indicator: glass_price_2_0_single, op: gte, value: 10.5, window_days: 30}
+      - {indicator: glass_inventory_days, op: lte, value: 40, window_days: 45}
+  - id: S2_polysilicon
+    name: 硅料"有价无市"→规模成交
+    thesis: 反内卷从口号变成成交，是行业最强的领先信号
+    logic: all
+    conditions:
+      - {indicator: polysilicon_inventory, op: lte, value: 45, window_days: 60}
+      - {indicator: polysilicon_price, op: pct_chg_gte, value: 5, window_days: 60}
+  - id: S3_demand
+    name: 需求端连续回暖
+    thesis: 没有需求配合的涨价是政策脉冲
+    logic: any
+    conditions:
+      - {indicator: module_schedule_cn, op: mom_streak_gte, value: 3, window_days: 200}
+      - {indicator: pv_install_cn_monthly, op: pct_chg_gte, value: 10, window_days: 90}
+  - id: S4_supply_exit
+    name: 供给侧真实退出
+    thesis: 冷修/关停公告落地 > 减产倡议书
+    logic: all
+    conditions:
+      - {indicator: glass_capacity_cold_repair_ytd, op: gte, value: 19600, window_days: 365}
+      - {indicator: glass_capacity_operating, op: lte, value: 72000, window_days: 60}
+  - id: S5_xinyi_margin
+    name: 信义玻璃分部毛利率修复
+    thesis: 龙头报表确认盈利修复(单季毛利率≥8%)；需与福莱特交叉验证是否为行业性修复
+    logic: all
+    conditions:
+      - {indicator: xinyi_glass_gm, op: gte, value: 8.0, window_days: 200}
+  - id: S5f_flat_margin
+    name: 福莱特玻璃毛利率修复
+    thesis: 双雄同时转正才是行业性修复，而不是单家公司靠海外产能的结构性优势
+    logic: all
+    conditions:
+      - {indicator: flat_glass_glass_gm, op: gte, value: 8.0, window_days: 200}
+  - id: S6_valuation
+    name: 估值与预期背离
+    thesis: 一致预期上修 + PB 上行 = 预期交易启动
+    logic: any
+    conditions:
+      - {indicator: consensus_np_fy2027, op: pct_chg_gte, value: 10, window_days: 90}
+      - {indicator: xinyi_pb, op: gte, value: 0.8, window_days: 60}

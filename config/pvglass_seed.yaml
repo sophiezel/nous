@@ -1,0 +1,58 @@
+# ═══════════════════════════════════════════════════════════════════════
+# 已知事实基线 — 把研究结论落库（每条都带日期与来源，可审计）
+#
+# 用法: nous pv seed            （写入 ~/nous-data/pvglass.db，source=seed）
+# 说明: 这不是"造数据"，而是把已公开披露/调研得到的时点快照登记进去，
+#       使信号引擎立刻可用；自动采集器后续写入的同期值会按 (指标,日期,来源)
+#       并存，不会互相覆盖。
+# ═══════════════════════════════════════════════════════════════════════
+
+observations:
+  # ── 光伏玻璃价格（2.0mm 单镀面板，含税送到，元/㎡）──────────────────
+  - {indicator: glass_price_2_0_single, date: "2026-05-31", value: 8.25, note: "5月结算8.5-9元；低点8-8.5，取中点", url: "卓创/隆众月评"}
+  - {indicator: glass_price_2_0_single, date: "2026-07-31", value: 8.50, note: "7月主流成交价约8.5", url: "隆众8月7日月评"}
+  - {indicator: glass_price_2_0_single, date: "2026-08-31", value: 9.50, note: "8月统一报价9.5；8月末结算价9.5", url: "https://www.mysteel.com/oilchem/a/26082611/26DE6A4697F27385.html"}
+  - {indicator: glass_price_2_0_single, date: "2026-09-04", value: 10.50, note: "9月统一报价10.5（较8月末结算价+1.0）；7月中/8月初/9月初三轮累计+24%", url: "https://www.mysteel.com/oilchem/a/26090409/18E302AEAFA7B47B.html"}
+  - {indicator: glass_settlement_price, date: "2026-08-31", value: 9.50, note: "8月末结算价（比报价更能代表当期收入）", url: "https://www.mysteel.com/oilchem/a/26090409/18E302AEAFA7B47B.html"}
+
+  # ── 供给：库存 / 产能 ──────────────────────────────────────────────
+  - {indicator: glass_inventory_days, date: "2026-05-31", value: 53.40, note: "5月下旬历史新高", url: "国金证券2026-09-13"}
+  - {indicator: glass_inventory_days, date: "2026-07-30", value: 45.13, note: "较高点回落约15%", url: "Mysteel月评2026-08-28"}
+  - {indicator: glass_capacity_operating, date: "2026-09-10", value: 72000, note: "国内在产名义产能7.2万吨/日（全球8.5万吨）", url: "卓创资讯/国金证券"}
+  - {indicator: glass_capacity_cold_repair_ytd, date: "2026-09-10", value: 19600, note: "年初至今累计冷修1.96万吨/日", url: "卓创资讯/国金证券"}
+  - {indicator: glass_cost_cash_floor, date: "2026-09-10", value: 10.25, note: "二三线现金成本线约10-10.5元/㎡（国金测算）", url: "国金证券2026-09-13"}
+
+  # ── 产业链库存 ────────────────────────────────────────────────────
+  - {indicator: polysilicon_inventory, date: "2026-09-10", value: 54.00, note: "硅料库存54万吨以上且仍在提产", url: "https://www.energytrend.cn/pricequotes/20260910-148568.html"}
+
+  # ── 需求 ──────────────────────────────────────────────────────────
+  # 口径纪律：装机单月值由采集器从「累计新增」自动差分得出，
+  # 这里只登记差分基数与人工口径数据，避免与采集器重复写同一 (指标,日期)
+  - {indicator: pv_install_cn_ytd, date: "2026-06-30", value: 72.07, note: "H1累计新增装机（NEA发布会稿，同比约-66%），作为7月单月差分的基数", url: "NEA 2026-07-30 发布会稿"}
+  - {indicator: module_production_cn, date: "2026-06-30", value: 201.30, note: "CPIA 组件产量（H1，同比-35.1%）——统计局口径不可替代", url: "CPIA"}
+
+  # ── 信义光能（公司）───────────────────────────────────
+  - {indicator: xinyi_revenue, date: "2025-12-31", value: 20861.2, note: "FY2025收入（-4.8%）", url: "FY2025年度业绩公告"}
+  - {indicator: xinyi_revenue, date: "2026-06-30", value: 8430.10, note: "2026H1收入（-22.9%）", url: "2026中期业绩公告"}
+  - {indicator: xinyi_glass_capacity, date: "2026-06-30", value: 22600, note: "在产日熔量22,600 t/d", url: "2026中期业绩公告"}
+  - {indicator: xinyi_overseas_ratio, date: "2026-06-30", value: 20.00, note: "海外产能占比约20%（海外收入占比38.8%）", url: "2026中期业绩公告"}
+  - {indicator: xinyi_glass_asp, date: "2026-06-30", value: 9.68, note: "H1综合ASP（同比-20%）", url: "2026中期业绩公告"}
+  - {indicator: xinyi_glass_gm, date: "2026-06-30", value: 3.30, note: "H1光伏玻璃分部毛利率", url: "2026中期业绩公告"}
+  - {indicator: xinyi_renewable_gm, date: "2026-06-30", value: 55.70, note: "H1可再生能源分部毛利率", url: "2026中期业绩公告"}
+  - {indicator: xinyi_attributable_profit, date: "2025-12-31", value: 844.50, note: "FY2025归母（同比-16.2%）", url: "FY2025年度业绩公告"}
+  - {indicator: xinyi_attributable_profit, date: "2026-06-30", value: 39.00, note: "2026H1归母（同比-94.8%）", url: "2026中期业绩公告"}
+  - {indicator: xinyi_impairment, date: "2025-12-31", value: 2321.60, note: "FY2025固定资产减值（FY2024为392.9）", url: "FY2025年度业绩公告"}
+  - {indicator: xinyi_net_gearing, date: "2026-06-30", value: 18.60, note: "净负债率18.6%，现金95.3亿", url: "2026中期业绩公告"}
+  - {indicator: xenergy_attributable_profit, date: "2026-06-30", value: 319.79, note: "信义能源H1归母3.20亿（同比-28.9%）；信义光能持股50.75%", url: "信义能源中期业绩公告2026073100623"}
+  - {indicator: xenergy_revenue, date: "2026-06-30", value: 1051.70, note: "H1收入10.52亿（-13.1%）；毛利率51.7%（上年61.8%）；总发电量同比-10.7%（限电+市场化电价）", url: "信义能源中期业绩公告"}
+  - {indicator: xenergy_capacity_mw, date: "2026-06-30", value: 4630.50, note: "运营并持有核准容量4,630.5MW（补贴1,624+平价3,006.5）；另有权益法174MW；非按股比的权益装机口径", url: "信义能源中期业绩公告"}
+  - {indicator: flat_revenue, date: "2026-06-30", value: 6668.21, note: "福莱特H1营收66.68亿（-13.81%）", url: "福莱特中期业绩公告2026082500671"}
+  - {indicator: flat_attributable_profit, date: "2026-06-30", value: -362.77, note: "福莱特H1归母-3.63亿（同比-236%）；Q2单季毛利率0.49%", url: "福莱特中期业绩公告"}
+  - {indicator: flat_glass_glass_gm, date: "2026-06-30", value: 6.73, note: "光伏玻璃分部毛利率（分部收入58.62亿、占比87.90%）；整体毛利率8.18%", url: "福莱特中期业绩公告分部表"}
+  - {indicator: xinyi_pb, date: "2026-09-15", value: 0.60, note: "PB约0.6x（历史极低位）", url: "国金证券2026-09-13"}
+
+events:
+  - {indicator: policy_low_price_rule, date: "2026-07-27", text: "中国光伏行业协会《光伏行业成本核算模型通则》发布（统一硅料/硅片/电池/组件成本口径）"}
+  - {indicator: policy_low_price_rule, date: "2026-09-10", text: "发改委+市监总局《关于重要工业品低价无序竞争成本核算有关事项的通知》"}
+  - {indicator: polysilicon_platform, date: "2025-12-09", text: "多晶硅收储平台公司注册：北京光和谦成科技，注册资本30亿元"}
+  - {indicator: policy_mandatory_standard, date: "2026-06-27", text: "GB 47835-2026《硅单晶单位产品能源消耗限额》发布，2027-01-01 实施"}

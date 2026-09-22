@@ -13,6 +13,7 @@ Usage:
     nous cron list|run       调度器
     nous storage status|check|eject|backup-kingston|migrate-archive
     nous serve               启动API
+    nous pv <...>            光伏玻璃产业链跟踪(指标/采集/信号/盈利模型/周报)
 """
 
 from __future__ import annotations
@@ -1282,3 +1283,20 @@ def version():
     """版本信息."""
     from nous import __version__
     console.print(f"Nous v{__version__}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Industry research — 光伏玻璃产业链跟踪
+# ═══════════════════════════════════════════════════════════════════════
+
+# 注: editable 安装只写 .pth（pyright 不读 .pth），静态分析器偶发对新建子包报
+# reportMissingImports 误报；运行时与 tests/research 已验证可导入，故按已知误报忽略。
+from nous.research.pvglass.cli import pv_app  # noqa: E402  # pyright: ignore[reportMissingImports]
+
+app.add_typer(pv_app, name="pv")
+
+# 如将来该误报变化，也可换成插件式加载（行为完全一致）:
+#
+#     import importlib
+#     module = importlib.import_module("nous.research.pvglass.cli")
+#     app.add_typer(module.pv_app, name="pv")

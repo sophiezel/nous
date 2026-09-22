@@ -112,6 +112,9 @@ JOBS = [
     ("ai-chain-phase",     "0 9 * * 1-5",   f"{VENV_PYTHON} -c \"from nous.engine.signals.concept_signals import chain_phase; chain_phase()\"", "AI链相位", 60),
     ("ai-chain-signals",   "5 9 * * 1-5",   f"{VENV_PYTHON} -c \"from nous.engine.signals.concept_signals import chain_signals; chain_signals()\"", "AI链信号", 60),
 
+    # === Research ===
+    ("pvglass-weekly",      "40 8 * * 1",     f"{VENV_PYTHON} {PROJECT_ROOT}/src/nous/scheduler/jobs/research/pvglass_weekly.py", "光伏玻璃周度跟踪", 900),
+
     # === Maintenance ===
     ("db-backup",          "0 * * * *",      f"{VENV_PYTHON} -c \"from nous.data.storage import backup; backup.run_hourly()\"", "DB备份", 300),
     ("db-maintain",        "0 4 * * *",      f"{VENV_PYTHON} -c \"from nous.data.storage import maintenance; maintenance.quick()\"", "DB维护", 120),

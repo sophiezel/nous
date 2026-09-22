@@ -44,6 +44,25 @@ clean:
 serve:
 	$(PYTHON) -m nous.cli serve --reload
 
+# ── 光伏玻璃产业链跟踪 ─────────────────────────────────────────────
+.PHONY: pv-seed pv-fetch pv-daily pv-signal pv-digest
+
+pv-seed:
+	$(VENV)/bin/nous pv seed
+
+pv-fetch:
+	$(VENV)/bin/nous pv fetch
+
+# 日常例行：基线 + 抓取 + 信号（然后再跑 pv-digest 出周报）
+pv-daily: pv-seed pv-fetch
+	$(VENV)/bin/nous pv signal
+
+pv-signal:
+	$(VENV)/bin/nous pv signal
+
+pv-digest:
+	$(VENV)/bin/nous pv digest
+
 .PHONY: check
 check: lint test
 	@echo "✓ All checks passed"

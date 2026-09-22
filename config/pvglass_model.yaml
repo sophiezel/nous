@@ -1,0 +1,84 @@
+# ═══════════════════════════════════════════════════════════════════════
+# 信义光能(00968.HK) 盈利模型 — 可校准、可情景切换
+#
+# 校准方法: 用 2026H1 已披露报表反推"毛利以下费用块"(opex/finance_tax)
+#           与少数股东分成比例，再外推 H2。
+# 使用:     nous pv xinyi [--scenario base] [--sens]
+# ═══════════════════════════════════════════════════════════════════════
+
+meta:
+  stock: "00968.HK"
+  name: 信义光能
+  calibrated_on: "2026-09-16"
+  basis: 2026H1 实际报表 + H2 模型外推
+  unit: 百万元人民币（除非另标）
+
+company:
+  shares_million: 9147.04      # 91.47亿股（2026-09 月报表）
+  price_hkd: 2.05              # 2026-09-15 收盘
+  hkd_cny: 0.92
+
+capacity:
+  t_per_day: 22600             # 2026-06-30 在产日熔量
+  area_per_ton: 200            # 2.0mm 约 200 ㎡/吨
+  days_per_quarter: 90
+
+# 2026H1 实际（用于校准 + 拼全年）
+h1_actual:
+  revenue: 8430.1
+  gross_profit: 920.3
+  operating_profit: 428.0
+  net_profit: 228.0
+  attributable: 39.0
+  glass_revenue: 7162.7
+  glass_gp: 246.0
+  glass_gm: 3.3
+  renewable_revenue: 1210.4
+  renewable_gp: 674.0
+  opex: 492.3                  # = 毛利 - 经营利润（含销售/行政/其他净额）
+  finance_tax: 200.0           # = 经营利润 - 净利润
+  renewable_group_net: 384.0   # 反推：少数股东 189.0 ÷ 49.25%
+  minority: 189.0
+
+# H2 模型假设（base 情景的默认值）
+h2_model:
+  utilization: {q3: 0.90, q4: 0.95}
+  asp: {q3: 9.40, q4: 10.20}   # 元/㎡ 实现均价（非报价）
+  unit_cost: 9.40              # 元/㎡ 完全成本（含折旧，由H1毛利率反推）
+  renewable_revenue: 1150.0
+  renewable_gm: 0.52
+  opex: 500.0
+  finance_tax: 210.0
+  renewable_group_net_factor: 0.90   # 相对 H1 的 384.0
+  minority_ratio: 0.4925       # 信义光能持信义能源 50.75%
+  impairment: 0.0
+
+# 情景：只改最关键的三个旋钮（Q4实现价 / 减值 / 电站利润）
+scenarios:
+  bear:
+    label: 熊 — 涨价被抵制 + 年末减值
+    asp_q4: 9.30
+    impairment: 600.0
+    renewable_group_net_factor: 0.75
+    opex: 520.0
+  base:
+    label: 基准 — 涨价部分落地、无大额减值
+    asp_q4: 10.20
+    impairment: 0.0
+    renewable_group_net_factor: 0.90
+    opex: 500.0
+  bull:
+    label: 牛 — 结算价站稳10.5+，需求配合
+    asp_q4: 11.00
+    impairment: 0.0
+    renewable_group_net_factor: 1.00
+    opex: 480.0
+
+# 一致性交叉验证（etnet 8家，中位数，2026-09）
+consensus_ref:
+  fy2026_median: 371.3
+  fy2026_min: -927.0
+  fy2026_max: 2830.6
+  fy2027_median: 1176.5
+  fy2028_median: 2046.0
+  note: 均值被极值污染；bull 情景≈中位数，bear 情景≈高盛最低值
