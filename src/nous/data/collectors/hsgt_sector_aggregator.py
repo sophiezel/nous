@@ -392,6 +392,8 @@ def main() -> bool:
 
     # 3) 按行业聚合
     print("\n--- 行业聚合 ---")
+    # 聚合抛异常时，下面第 411 行对它的引用不能是未绑定变量（否则 NameError）
+    sector_records: list = []
     try:
         sector_records = aggregate_by_sector(records, stock_names)
         print("  [聚合] %d 个行业板块" % len(sector_records))
@@ -408,6 +410,7 @@ def main() -> bool:
         errors.append("aggregate: %s" % e)
 
     # 4) 写入数据库
+    saved_count = 0  # 未写入时最终汇报也要有值（否则同样 NameError）
     if sector_records and not errors:
         try:
             saved_count = save_sector_flow(sector_records)
