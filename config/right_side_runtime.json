@@ -1,0 +1,33 @@
+{
+  "trade_enabled": false,
+  "updated": "2026-09-19T01:29:41.016508",
+  "passed": false,
+  "reason": null,
+  "checks": [
+    {
+      "name": "oos_n",
+      "ok": true,
+      "detail": "oos_n=249 need>=40"
+    },
+    {
+      "name": "oos_wr",
+      "ok": false,
+      "detail": "oos_wr=0.3976 need>=0.52"
+    },
+    {
+      "name": "oos_pf",
+      "ok": true,
+      "detail": "oos_pf=1.5077 need>=1.3"
+    },
+    {
+      "name": "oos_dd",
+      "ok": false,
+      "detail": "oos_dd=-0.7171 need>=-0.2"
+    },
+    {
+      "name": "dual_window_expectancy",
+      "ok": true,
+      "detail": "cal_avg=0.0013 oos_avg=0.0125 cal_n=155"
+    }
+  ]
+}
