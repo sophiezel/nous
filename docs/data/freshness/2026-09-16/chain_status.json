@@ -1,20 +1,20 @@
 {
   "chain": "post-close",
-  "as_of": "2026-09-11",
+  "as_of": "2026-09-16",
   "ok": false,
-  "elapsed_s": 2043.32,
+  "elapsed_s": 2044.24,
   "stopped_at": "S4",
   "stages": [
     {
       "name": "S1",
       "ok": true,
       "message": "10/13 collectors ok",
-      "elapsed_s": 1450.16,
+      "elapsed_s": 1249.65,
       "details": {
         "batch": {
           "ok": true,
           "message": "10/13 collectors ok",
-          "elapsed_s": 1353.4,
+          "elapsed_s": 1152.03,
           "details": {
             "daily": "ok",
             "fundamental": "ok",
@@ -34,37 +34,33 @@
         "cross": {
           "ok": false,
           "message": "cross-validate done",
-          "elapsed_s": 96.67,
+          "elapsed_s": 97.38,
           "result": {
             "ok": false,
-            "date": "2026-09-11",
+            "date": "2026-09-16",
             "checked": 50,
             "errors": [
               {
                 "symbol": "300308",
-                "reason": "收盘价差异11.6%"
+                "reason": "收盘价差异13.3%"
               },
               {
                 "symbol": "300502",
-                "reason": "收盘价差异29.9%"
-              },
-              {
-                "symbol": "300394",
-                "reason": "收盘价差异30.0%"
+                "reason": "收盘价差异29.7%"
               },
               {
                 "symbol": "688256",
-                "reason": "收盘价差异15.6%"
+                "reason": "收盘价差异7.9%"
               },
               {
-                "symbol": "000725",
-                "reason": "收盘价差异6.5%"
+                "symbol": "300394",
+                "reason": "收盘价差异28.1%"
               }
             ],
             "warnings": [
               {
-                "symbol": "601138",
-                "reason": "差异3.9%"
+                "symbol": "000725",
+                "reason": "差异4.4%"
               }
             ]
           }
@@ -72,29 +68,29 @@
         "gap": {
           "ok": true,
           "message": "gap-detector done",
-          "elapsed_s": 0.08
+          "elapsed_s": 0.24
         }
       }
     },
     {
       "name": "S2",
       "ok": true,
-      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-09-11.parquet",
-      "elapsed_s": 488.4,
+      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-09-16.parquet",
+      "elapsed_s": 682.03,
       "details": {
-        "elapsed_s": 488.4
+        "elapsed_s": 682.02
       }
     },
     {
       "name": "S3",
       "ok": true,
       "message": "P0=ok P1=ok",
-      "elapsed_s": 104.17,
+      "elapsed_s": 111.63,
       "details": {
         "p0_ok": true,
         "p1_ok": true,
         "degraded": [],
-        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-11/FRESHNESS_REPORT.md",
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-16/FRESHNESS_REPORT.md",
         "failed": []
       }
     },
@@ -102,21 +98,21 @@
       "name": "S4",
       "ok": false,
       "message": "recommend=fail; review=ok",
-      "elapsed_s": 0.58,
+      "elapsed_s": 0.93,
       "details": {
         "recommend": {
           "ok": false,
           "message": "skipped",
-          "elapsed_s": 0.07,
+          "elapsed_s": 0.13,
           "result": {
             "status": "skipped"
           }
         },
         "review": {
           "ok": true,
-          "message": "review 2026-09-11 score=61.0",
-          "elapsed_s": 0.51,
-          "verdict": "信号一般，谨慎参与"
+          "message": "review 2026-09-16 score=59.5",
+          "elapsed_s": 0.79,
+          "verdict": "信号较差，观望为主"
         }
       }
     }

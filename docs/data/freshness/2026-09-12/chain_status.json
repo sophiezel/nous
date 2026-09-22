@@ -1,20 +1,20 @@
 {
   "chain": "post-close",
-  "as_of": "2026-09-11",
+  "as_of": "2026-09-12",
   "ok": false,
-  "elapsed_s": 2043.32,
-  "stopped_at": "S4",
+  "elapsed_s": 1536.97,
+  "stopped_at": "S2",
   "stages": [
     {
       "name": "S1",
       "ok": true,
       "message": "10/13 collectors ok",
-      "elapsed_s": 1450.16,
+      "elapsed_s": 1526.92,
       "details": {
         "batch": {
           "ok": true,
           "message": "10/13 collectors ok",
-          "elapsed_s": 1353.4,
+          "elapsed_s": 1427.63,
           "details": {
             "daily": "ok",
             "fundamental": "ok",
@@ -22,19 +22,19 @@
             "global-index": "ok",
             "margin": "ok",
             "hsgt": "ok",
-            "lhb": "error",
+            "lhb": "skip",
             "fund-flow": "error",
             "etf-flow": "error",
             "futures": "ok",
             "sentiment": "ok",
-            "block-trade": "ok",
+            "block-trade": "error",
             "futures-basis": "ok"
           }
         },
         "cross": {
           "ok": false,
           "message": "cross-validate done",
-          "elapsed_s": 96.67,
+          "elapsed_s": 99.17,
           "result": {
             "ok": false,
             "date": "2026-09-11",
@@ -72,52 +72,17 @@
         "gap": {
           "ok": true,
           "message": "gap-detector done",
-          "elapsed_s": 0.08
+          "elapsed_s": 0.12
         }
       }
     },
     {
       "name": "S2",
-      "ok": true,
-      "message": "saved /Users/xuwei/nous-data/factors/snapshots/2026-09-11.parquet",
-      "elapsed_s": 488.4,
-      "details": {
-        "elapsed_s": 488.4
-      }
-    },
-    {
-      "name": "S3",
-      "ok": true,
-      "message": "P0=ok P1=ok",
-      "elapsed_s": 104.17,
-      "details": {
-        "p0_ok": true,
-        "p1_ok": true,
-        "degraded": [],
-        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-11/FRESHNESS_REPORT.md",
-        "failed": []
-      }
-    },
-    {
-      "name": "S4",
       "ok": false,
-      "message": "recommend=fail; review=ok",
-      "elapsed_s": 0.58,
+      "message": "FileExistsError: [Errno 17] File exists: '/Users/xuwei/nous-data/factors'",
+      "elapsed_s": 10.04,
       "details": {
-        "recommend": {
-          "ok": false,
-          "message": "skipped",
-          "elapsed_s": 0.07,
-          "result": {
-            "status": "skipped"
-          }
-        },
-        "review": {
-          "ok": true,
-          "message": "review 2026-09-11 score=61.0",
-          "elapsed_s": 0.51,
-          "verdict": "信号一般，谨慎参与"
-        }
+        "elapsed_s": 10.04
       }
     }
   ]

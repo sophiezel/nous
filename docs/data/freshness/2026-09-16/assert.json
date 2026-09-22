@@ -1,13 +1,13 @@
 {
-  "as_of": "2026-09-11",
-  "last_trade_date": "2026-09-10",
+  "as_of": "2026-09-16",
+  "last_trade_date": "2026-09-15",
   "ok": true,
   "p0_ok": true,
   "p1_ok": true,
   "consumer": "recommend",
   "domain": "all",
   "degraded": [],
-  "elapsed_s": 104.14,
+  "elapsed_s": 110.05,
   "checks": [
     {
       "key": "stock_daily_a",
@@ -16,8 +16,8 @@
       "priority": "P0",
       "ok": true,
       "track": "freshness",
-      "detail": "最新=2026-09-11, 交易日滞后=0 (阈值≤1), 覆盖=88%/80%",
-      "latest": "2026-09-11",
+      "detail": "最新=2026-09-16, 交易日滞后=0 (阈值≤1), 覆盖=100%/80%",
+      "latest": "2026-09-16",
       "lag_trading_days": 0,
       "soft_fail": false
     },
@@ -28,7 +28,7 @@
       "priority": "P0",
       "ok": true,
       "track": "existence",
-      "detail": "行数=6643",
+      "detail": "行数=6659",
       "latest": null,
       "lag_trading_days": null,
       "soft_fail": false
@@ -40,8 +40,8 @@
       "priority": "P1",
       "ok": true,
       "track": "freshness",
-      "detail": "最新=2026-09-11, 交易日滞后=0 (阈值≤2)",
-      "latest": "2026-09-11",
+      "detail": "最新=2026-09-16, 交易日滞后=0 (阈值≤2)",
+      "latest": "2026-09-16",
       "lag_trading_days": 0,
       "soft_fail": false
     },
@@ -52,8 +52,8 @@
       "priority": "P1",
       "ok": true,
       "track": "freshness",
-      "detail": "最新=2026-09-10, 交易日滞后=0 (阈值≤1)",
-      "latest": "2026-09-10",
+      "detail": "最新=2026-09-15, 交易日滞后=0 (阈值≤1)",
+      "latest": "2026-09-15",
       "lag_trading_days": 0,
       "soft_fail": false
     },
@@ -64,8 +64,8 @@
       "priority": "P1",
       "ok": true,
       "track": "freshness",
-      "detail": "最新=2026-09-10, 交易日滞后=0 (阈值≤3)",
-      "latest": "2026-09-10",
+      "detail": "最新=2026-09-15, 交易日滞后=0 (阈值≤3)",
+      "latest": "2026-09-15",
       "lag_trading_days": 0,
       "soft_fail": false
     },
@@ -76,8 +76,8 @@
       "priority": "P0",
       "ok": true,
       "track": "freshness",
-      "detail": "latest.parquet 行数=10051934 (阈值≥500), as_of=2026-09-11, 交易日滞后=0, K列=60",
-      "latest": "2026-09-11",
+      "detail": "latest.parquet 行数=10067869 (阈值≥500), as_of=2026-09-16, 交易日滞后=0, K列=60",
+      "latest": "2026-09-16",
       "lag_trading_days": null,
       "soft_fail": false
     },
@@ -88,8 +88,8 @@
       "priority": "P0",
       "ok": true,
       "track": "freshness",
-      "detail": "2026-09-10.parquet 行数=10046623 (阈值≥500), K列=60",
-      "latest": "2026-09-10",
+      "detail": "2026-09-15.parquet 行数=10062557 (阈值≥500), K列=60",
+      "latest": "2026-09-15",
       "lag_trading_days": null,
       "soft_fail": false
     },
@@ -100,7 +100,7 @@
       "priority": "P1",
       "ok": true,
       "track": "freshness",
-      "detail": "lgb_2026-09-07.pkl 年龄=4.6d (阈值≤14d), 共4个",
+      "detail": "lgb_2026-09-14.pkl 年龄=2.6d (阈值≤14d), 共5个",
       "latest": null,
       "lag_trading_days": null,
       "soft_fail": false
@@ -112,8 +112,8 @@
       "priority": "P0",
       "ok": true,
       "track": "integrity",
-      "detail": "2026-09-10: 行=5312, 无效OHLC=0 (0.0%)",
-      "latest": "2026-09-10",
+      "detail": "2026-09-15: 行=5314, 无效OHLC=0 (0.0%)",
+      "latest": "2026-09-15",
       "lag_trading_days": null,
       "soft_fail": false
     }

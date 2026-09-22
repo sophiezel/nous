@@ -1,0 +1,56 @@
+{
+  "chain": "post-close",
+  "as_of": "2026-09-22",
+  "ok": false,
+  "elapsed_s": 0.86,
+  "stopped_at": "S2",
+  "stages": [
+    {
+      "name": "S1",
+      "ok": false,
+      "message": "1/13 collectors ok",
+      "elapsed_s": 0.85,
+      "details": {
+        "batch": {
+          "ok": false,
+          "message": "1/13 collectors ok",
+          "elapsed_s": 0.85,
+          "details": {
+            "daily": "error",
+            "fundamental": "error",
+            "index": "error",
+            "global-index": "error",
+            "margin": "error",
+            "hsgt": "error",
+            "lhb": "error",
+            "fund-flow": "error",
+            "etf-flow": "error",
+            "futures": "error",
+            "sentiment": "error",
+            "block-trade": "error",
+            "futures-basis": "ok"
+          }
+        },
+        "cross": {
+          "ok": false,
+          "message": "OperationalError: unable to open database file",
+          "elapsed_s": 0.0
+        },
+        "gap": {
+          "ok": false,
+          "message": "OperationalError: unable to open database file",
+          "elapsed_s": 0.0
+        }
+      }
+    },
+    {
+      "name": "S2",
+      "ok": false,
+      "message": "OperationalError: unable to open database file",
+      "elapsed_s": 0.0,
+      "details": {
+        "elapsed_s": 0.0
+      }
+    }
+  ]
+}

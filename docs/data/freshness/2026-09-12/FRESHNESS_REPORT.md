@@ -1,10 +1,10 @@
-# 数据鲜度断言报告 — 2026-09-11
+# 数据鲜度断言报告 — 2026-09-12
 
-**综合裁决：通过**  
+**综合裁决：未通过**  
 上一交易日：`2026-09-10`  |  consumer=`recommend`  |  domain=`all`  
-P0=通过  P1=通过  
+P0=未通过  P1=通过  
 DEGRADED: 无  
-耗时：104.14s
+耗时：0.0s
 
 | 优先级 | 资产 | 轨道 | 裁决 | 详情 |
 |--------|------|------|------|------|
@@ -13,9 +13,9 @@ DEGRADED: 无
 | P1 | 基本面快照 (`stock_fundamental`) | freshness | 通过 | 最新=2026-09-11, 交易日滞后=0 (阈值≤2) |
 | P1 | 指数日线 (`index_daily`) | freshness | 通过 | 最新=2026-09-10, 交易日滞后=0 (阈值≤1) |
 | P1 | 沪深港通个股 (`hsgt_stock_daily`) | freshness | 通过 | 最新=2026-09-10, 交易日滞后=0 (阈值≤3) |
-| P0 | A股因子 latest (`factors_latest`) | freshness | 通过 | latest.parquet 行数=10051934 (阈值≥500), as_of=2026-09-11, 交易日滞后=0, K列=60 |
-| P0 | A股因子 dated snapshot (`factors_snapshot`) | freshness | 通过 | 2026-09-10.parquet 行数=10046623 (阈值≥500), K列=60 |
-| P1 | LightGBM 模型 (`models_lgb`) | freshness | 通过 | lgb_2026-09-07.pkl 年龄=4.6d (阈值≤14d), 共4个 |
+| P0 | A股因子 latest (`factors_latest`) | freshness | 未通过 | 文件不存在: /Users/xuwei/nous-data/factors/latest.parquet |
+| P0 | A股因子 dated snapshot (`factors_snapshot`) | freshness | 未通过 | 无 dated snapshot (期望 2026-09-10) |
+| P1 | LightGBM 模型 (`models_lgb`) | freshness | 通过 | lgb_2026-09-07.pkl 年龄=5.3d (阈值≤14d), 共4个 |
 | P0 | 日线完整性抽样 (`integrity_ohlcv`) | integrity | 通过 | 2026-09-10: 行=5312, 无效OHLC=0 (0.0%) |
 
 ## 读数

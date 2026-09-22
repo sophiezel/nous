@@ -1,0 +1,22 @@
+{
+  "chain": "morning",
+  "as_of": "2026-09-19",
+  "ok": true,
+  "elapsed_s": 115.12,
+  "stopped_at": null,
+  "stages": [
+    {
+      "name": "S0a-assert",
+      "ok": true,
+      "message": "P0=ok P1=ok",
+      "elapsed_s": 115.11,
+      "details": {
+        "p0_ok": true,
+        "p1_ok": true,
+        "degraded": [],
+        "report": "/Users/xuwei/code/nous/docs/data/freshness/2026-09-19/FRESHNESS_REPORT.md",
+        "failed": []
+      }
+    }
+  ]
+}
