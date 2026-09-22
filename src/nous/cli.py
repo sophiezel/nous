@@ -1139,7 +1139,7 @@ def meituan_alert(
         run_meituan_reversal,
     )
 
-    res = run_meituan_reversal(as_of=date or None)
+    res = run_meituan_reversal(as_of=date)
     tag = classify_alert(res.composite)
     payload = {
         "as_of": res.as_of,
