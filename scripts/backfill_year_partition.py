@@ -147,14 +147,23 @@ def fetch_baostock(symbol: str, start: str, end: str):
 
     def _do():
         # login per call is heavy; reuse module-level session via login once
-        rs = bs.query_history_k_data_plus(
-            code,
-            "date,open,high,low,close,volume,amount",
-            start_date=start,
-            end_date=end,
-            frequency="d",
-            adjustflag="2",
-        )
+        def _query():
+            return bs.query_history_k_data_plus(
+                code,
+                "date,open,high,low,close,volume,amount",
+                start_date=start,
+                end_date=end,
+                frequency="d",
+                adjustflag="2",
+            )
+
+        rs = _query()
+        msg = (rs.error_msg or "").lower()
+        if rs.error_code != "0" and ("login" in msg or "you don't login" in msg):
+            lg = bs.login()
+            if lg.error_code != "0":
+                raise RuntimeError(f"baostock_login:{lg.error_msg}")
+            rs = _query()
         rows = []
         while rs.error_code == "0" and rs.next():
             rows.append(rs.get_row_data())
@@ -282,14 +291,17 @@ def fetch_tx_sample(symbol: str, start: str, end: str):
         return None
 
 
-def fetch_symbol_multisource(symbol: str, start: str, end: str, do_cross: bool):
+def fetch_symbol_multisource(
+    symbol: str, start: str, end: str, do_cross: bool, baostock_only: bool = False
+):
     """主备切换：baostock → sina → akshare hist；可选腾讯抽样交叉。"""
     errors: list[str] = []
     df = None
     source = None
 
     # Prefer baostock (non-HTTP, stable for year history). Fallbacks are slower / flakier.
-    for fetcher in (fetch_baostock, fetch_sina_daily, fetch_akshare_hist):
+    fetchers = (fetch_baostock,) if baostock_only else (fetch_baostock, fetch_sina_daily, fetch_akshare_hist)
+    for fetcher in fetchers:
         try:
             df, source = fetcher(symbol, start, end)
             if df is not None and len(df) > 0:
@@ -419,6 +431,7 @@ def run_worker(
     end: str,
     worker_id: int,
     enable_cross: bool = False,
+    baostock_only: bool = False,
 ) -> tuple[int, int, int]:
     import baostock as bs
 
@@ -446,7 +459,7 @@ def run_worker(
 
         do_cross = bool(enable_cross) and (i > 0) and (i % CROSS_CHECK_EVERY == 0)
         try:
-            df, source, cross = fetch_symbol_multisource(sym, start, end, do_cross)
+            df, source, cross = fetch_symbol_multisource(sym, start, end, do_cross, baostock_only=baostock_only)
             last_source = source or "-"
             n = write_rows(conn, sym, df, year)
             if n == 0:
@@ -511,6 +524,7 @@ def main() -> int:
     p.add_argument("--end", default="")
     p.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     p.add_argument("--thin-only", action="store_true")
+    p.add_argument("--baostock-only", action="store_true", help="only baostock; skip HTTP fallbacks")
     p.add_argument("--hole-fill", action="store_true",
                     help="Only symbols missing this year but present in any later year/hot")
     p.add_argument("--cross-check", action="store_true",
@@ -550,7 +564,7 @@ def main() -> int:
     conn.close()
 
     log.info(
-        "year=%s %s→%s pending=%s/%s workers=%s thin_only=%s hole_fill=%s",
+        "year=%s %s→%s pending=%s/%s workers=%s thin_only=%s hole_fill=%s baostock_only=%s",
         year,
         start,
         end,
@@ -559,6 +573,7 @@ def main() -> int:
         workers,
         args.thin_only,
         args.hole_fill,
+        args.baostock_only,
     )
     if not pending:
         log.info("nothing to do")
@@ -567,7 +582,7 @@ def main() -> int:
     t0 = time.time()
     enable_cross = bool(args.cross_check)
     if workers == 1:
-        results = [run_worker(pending, year, start, end, 0, enable_cross)]
+        results = [run_worker(pending, year, start, end, 0, enable_cross, args.baostock_only)]
     else:
         import multiprocessing as mp
 
@@ -576,7 +591,7 @@ def main() -> int:
         with mp.Pool(workers) as pool:
             results = pool.starmap(
                 run_worker,
-                [(ch, year, start, end, i, enable_cross) for i, ch in enumerate(chunks)],
+                [(ch, year, start, end, i, enable_cross, args.baostock_only) for i, ch in enumerate(chunks)],
             )
 
     ok = sum(r[0] for r in results)
