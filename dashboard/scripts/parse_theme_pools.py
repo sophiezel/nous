@@ -100,13 +100,13 @@ def extract_comment(block_lines: list) -> str:
     return " | ".join(parts).strip()
 
 
-def identify_columns(header_cells: list) -> dict:
+def identify_columns(header_cells: list) -> dict[str, int | None]:
     """Map expected column names to indices based on header row.
-    
+
     Expected: 代码, 名称, 现价, 涨跌, 成交额(亿), 来源
     Returns: dict mapping column_key -> index or None
     """
-    col_map = {
+    col_map: dict[str, int | None] = {
         "symbol": None,   # 代码
         "name": None,     # 名称
         "price": None,    # 现价
@@ -195,9 +195,13 @@ def process_file(filepath: Path) -> list:
     """
     print(f"  Processing: {filepath.name}")
     theme = extract_theme_name(str(filepath))
-    
-    with open(filepath, "r", encoding="utf-8") as f:
-        content = f.read()
+
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError as exc:  # 单文件读失败不应中断整批解析
+        print(f"    ! 读取失败，跳过: {exc}")
+        return []
     
     lines = content.split("\n")
     
